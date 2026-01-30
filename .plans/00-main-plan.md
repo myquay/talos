@@ -182,10 +182,31 @@ Talos is an IndieAuth authorization server that allows users to sign in to Indie
 - EF Core configuration
 
 ### Phase 8: Testing & Deployment
-- [08-testing.md](./08-testing.md)
+- [08-testing.md](./08-testing.md) - Comprehensive unit testing based on IndieAuth & RelMeAuth specs
 - [09-deployment.md](./09-deployment.md)
+- Unit tests derived from specification examples (17 test suites)
 - Integration with indieauth.rocks
 - Docker containerization
+
+#### Testing Coverage (from Specifications)
+| Test Suite | Specification | Coverage |
+|------------|--------------|----------|
+| URL Canonicalization | IndieAuth §3.2 | Profile URL, Client ID, Redirect URI validation |
+| Authorization Request | IndieAuth §4 | Required parameters, PKCE, scopes |
+| PKCE (RFC 7636) | RFC 7636 Appendix B | S256 verification, code verifier rules |
+| Token Request | IndieAuth §5 | Grant types, code exchange |
+| Token Response | IndieAuth §5.3 | JWT format, required claims |
+| Token Introspection | RFC 7662 | Active/inactive responses |
+| Token Revocation | RFC 7009 | Revoke behavior |
+| Metadata Discovery | IndieAuth §4.4 | Well-known endpoint |
+| rel="me" Discovery | RelMeAuth | Link parsing, relative URLs |
+| Provider Matching | RelMeAuth | GitHub URL patterns |
+| Reciprocal Links | RelMeAuth | Bi-directional verification |
+| OAuth Errors | RFC 6749 §5.2 | Standard error codes |
+| JWT Claims | IndieAuth §5.3 | me, client_id, scope claims |
+| Authorization Codes | IndieAuth §4.4 | Generation, expiry, single-use |
+| Refresh Tokens | OAuth 2.0 | Rotation, revocation |
+| Profile Response | IndieAuth §5.4 | profile/email scopes |
 
 ## Component Dependencies
 
@@ -296,4 +317,7 @@ For a user to authenticate via Talos, their website must:
 - [OAuth 2.0 (RFC 6749)](https://tools.ietf.org/html/rfc6749)
 - [PKCE (RFC 7636)](https://tools.ietf.org/html/rfc7636)
 - [JWT (RFC 7519)](https://tools.ietf.org/html/rfc7519)
+- [Token Introspection (RFC 7662)](https://tools.ietf.org/html/rfc7662)
+- [Token Revocation (RFC 7009)](https://tools.ietf.org/html/rfc7009)
 - [GitHub OAuth Documentation](https://docs.github.com/en/developers/apps/building-oauth-apps)
+- [indieauth.rocks](https://indieauth.rocks/) - Official IndieAuth test suite
