@@ -1,5 +1,20 @@
 # 04 - Token Endpoint
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- TokenController with /token endpoint supporting authorization_code and refresh_token grant types
+- Authorization code validation with PKCE verification
+- JWT access token generation with proper IndieAuth claims (me, client_id, scope)
+- Opaque refresh token generation and database storage
+- Refresh token rotation on use (old token revoked, new one issued)
+- Token introspection endpoint (/token/introspect) per RFC 7662
+- Token revocation endpoint (/token/revoke) per RFC 7009
+- MetadataController with /.well-known/oauth-authorization-server discovery
+- Proper OAuth error responses with error codes and descriptions
+
+---
+
 ## Overview
 
 The token endpoint (`/token`) exchanges authorization codes for access tokens and handles refresh token flows. Talos uses:

@@ -1,0 +1,3 @@
+[submodule "src/IndieAuth"]
+	path = src/IndieAuth
+	url = https://github.com/myquay/IndieAuth

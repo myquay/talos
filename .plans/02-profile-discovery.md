@@ -1,5 +1,20 @@
 # 02 - Profile Discovery (RelMeAuth)
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- ProfileDiscoveryService with full rel="me" link discovery from user websites
+- HTML parsing using HtmlAgilityPack to extract rel="me" links from both `<a>` and `<link>` elements
+- Relative URL resolution to absolute URLs
+- Discovery of IndieAuth endpoints (authorization_endpoint, token_endpoint) from both HTTP Link headers and HTML `<link>` elements
+- URL normalization (adding scheme if missing, trailing slash for domain-only URLs)
+- GitHubIdentityProvider with URL pattern matching to identify GitHub profile URLs
+- Reciprocal link verification (checking GitHub profile blog/bio for user's website URL)
+- Integration with IdentityProviderFactory for extensible provider matching
+- HTTP client configuration with timeout and user agent
+
+---
+
 ## Overview
 
 Profile Discovery is the process of fetching a user's personal website and discovering supported identity providers through `rel="me"` links. This is the foundation of how Talos authenticates users without storing credentials.

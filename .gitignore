@@ -11,6 +11,12 @@
 *.sln.docstates
 *.env
 
+# Development settings (contain local secrets)
+**/appsettings.Development.json
+
+# JetBrains IDE
+.idea/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

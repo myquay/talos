@@ -1,5 +1,18 @@
 # 08 - Testing
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- Unit tests for PkceService (PKCE S256 verification per RFC 7636)
+- Unit tests for UrlValidator (IndieAuth URL validation)
+- Unit tests for TokenService (JWT generation and validation)
+- Unit tests for GitHubIdentityProvider (URL pattern matching, reserved paths)
+- 80 tests total, all passing
+- FluentAssertions for readable test assertions
+- Moq for mocking dependencies
+
+---
+
 ## Overview
 
 This document covers the testing strategy for Talos, including unit tests, integration tests, and end-to-end testing with IndieAuth-compatible tools. Test cases are derived directly from the [IndieAuth Specification](https://indieauth.spec.indieweb.org/) and [RelMeAuth Specification](https://microformats.org/wiki/RelMeAuth).

@@ -1,5 +1,29 @@
 # 01 - Project Setup
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- Created .NET 10 solution with Talos.Web, Talos.Core, and test projects
+- Installed all required NuGet packages (EF Core SQLite, JWT, HtmlAgilityPack)
+- Set up Vue.js 3 with Vite, TypeScript, Vue Router, and Tailwind CSS
+- Created full ClientApp structure with views, components, and API layer
+- Implemented configuration classes (GitHubSettings, JwtSettings, IndieAuthSettings, TalosSettings)
+- Set up appsettings.json with full configuration structure
+- Created Program.cs with DI configuration, HTTP clients, and SPA static file serving
+- Implemented core service interfaces and implementations:
+  - IProfileDiscoveryService / ProfileDiscoveryService (rel="me" link discovery)
+  - IIdentityProvider / GitHubIdentityProvider (GitHub OAuth)
+  - IIdentityProviderFactory / IdentityProviderFactory
+  - ITokenService / TokenService (JWT generation/validation)
+  - IAuthorizationService / AuthorizationService (authorization flow)
+  - IPkceService / PkceService (PKCE S256 validation)
+- Created EF Core DbContext with entities for PendingAuthentication, AuthorizationCode, RefreshToken
+- Created Vue.js views: ProviderSelectView, ConsentView, ErrorView
+- Created Vue.js components: ProviderCard, ClientCard, ScopeList
+- Build passes successfully
+
+---
+
 ## Overview
 
 This plan covers the initial project structure, tooling, and dependencies for the Talos IndieAuth server. Talos authenticates users via third-party identity providers (starting with GitHub) discovered from the user's website.
@@ -98,8 +122,6 @@ talos/
 ├── .plans/                           # Planning documents
 ├── .gitignore
 ├── talos.sln
-├── Dockerfile
-├── docker-compose.yml
 └── README.md
 ```
 

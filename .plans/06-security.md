@@ -1,5 +1,29 @@
 # 06 - Security
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- PkceService with S256 code challenge verification
+- Base64URL encoding for PKCE challenges
+- Code verifier format validation (43-128 chars, unreserved characters)
+- Rate limiting using ASP.NET Core built-in RateLimiter
+  - Global limit: 100 requests/minute per IP
+  - Auth endpoint: 30 requests/minute per IP  
+  - Token endpoint: 20 requests/minute per IP
+- Security headers middleware:
+  - X-Frame-Options: DENY
+  - X-Content-Type-Options: nosniff
+  - X-XSS-Protection: 1; mode=block
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Content-Security-Policy with strict defaults
+- HTTPS redirection in production
+- UrlValidator utility class for IndieAuth-compliant URL validation
+  - Profile URL normalization
+  - Client ID validation
+  - Redirect URI validation against client ID
+
+---
+
 ## Overview
 
 This document covers the security features required for a compliant IndieAuth server, including PKCE, CSRF protection, rate limiting, and secure token handling.

@@ -1,5 +1,22 @@
 # 03 - Authorization Endpoint
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- AuthController with /auth endpoint supporting full IndieAuth authorization flow
+- Validation of all required parameters (response_type, client_id, redirect_uri, state, code_challenge, me)
+- PKCE requirement enforcement (S256 only)
+- Profile discovery integration to find rel="me" links
+- PendingAuthentication entity for session state management
+- Provider selection API endpoint (/api/auth/providers)
+- Provider selection flow (/api/auth/select-provider)
+- Consent info retrieval (/api/auth/consent GET)
+- Consent submission with authorization code generation (/api/auth/consent POST)
+- Error redirect handling with proper OAuth error codes
+- Vue.js ProviderSelectView and ConsentView integration
+
+---
+
 ## Overview
 
 The authorization endpoint (`/auth`) is where clients redirect users to authenticate and authorize access. With Talos's third-party identity provider model, the flow includes profile discovery and OAuth with providers like GitHub.

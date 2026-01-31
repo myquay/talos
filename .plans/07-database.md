@@ -1,5 +1,20 @@
 # 07 - Database
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- TalosDbContext with EF Core and SQLite
+- Entity models:
+  - PendingAuthenticationEntity: Stores pending auth requests with provider state
+  - AuthorizationCodeEntity: Stores authorization codes with PKCE challenge
+  - RefreshTokenEntity: Stores opaque refresh tokens with revocation support
+- Indexes on ExpiresAt for efficient expiry queries
+- Indexes on ProfileUrl for refresh token lookup
+- Database auto-creation on startup (EnsureCreated)
+- JSON serialization for provider list in PendingAuthentication
+
+---
+
 ## Overview
 
 Talos uses SQLite for persistent storage with Entity Framework Core. The database stores pending authentications, authorization codes, refresh tokens, and provider OAuth state. **No user data is stored** - users are authenticated via third-party identity providers.

@@ -1,5 +1,21 @@
 # 05 - Authentication (Identity Providers)
 
+## Implementation Status: ✅ COMPLETED (January 31, 2026)
+
+### What Was Implemented
+- GitHubIdentityProvider with full OAuth 2.0 flow support
+- URL pattern matching for GitHub profile URLs (github.com/username)
+- OAuth authorization URL generation with proper scopes (read:user, user:email)
+- Code-to-token exchange with GitHub's OAuth endpoint
+- User profile verification (username matching)
+- Reciprocal link verification (checking GitHub blog/bio for user's website URL)
+- CallbackController handling GitHub OAuth callbacks
+- Provider state management via PendingAuthentication entity
+- Error handling for OAuth errors, token exchange failures, and verification failures
+- IdentityProviderFactory for extensible provider architecture
+
+---
+
 ## Overview
 
 Talos authenticates users via third-party identity providers discovered from the user's website. This document covers the GitHub OAuth integration and the extensible identity provider architecture.
