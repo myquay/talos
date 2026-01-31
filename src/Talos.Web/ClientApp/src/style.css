@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@source "../index.html";
+@source "./**/*.{vue,js,ts,jsx,tsx}";
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}

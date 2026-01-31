@@ -1,0 +1,296 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Talos.Web.Configuration;
+using Talos.Web.Data;
+using Talos.Web.Data.Entities;
+using Talos.Web.Services;
+
+namespace Talos.Web.Controllers;
+
+[ApiController]
+[Route("token")]
+[EnableRateLimiting("token")]
+public class TokenController(
+    IAuthorizationService authorizationService,
+    ITokenService tokenService,
+    TalosDbContext dbContext,
+    IOptions<IndieAuthSettings> settings)
+    : ControllerBase
+{
+    /// <summary>
+    /// IndieAuth Token Endpoint
+    /// </summary>
+    [HttpPost]
+    [Consumes("application/x-www-form-urlencoded")]
+    public async Task<IActionResult> Exchange([FromForm] TokenRequest request)
+    {
+        if (request.GrantType == "authorization_code")
+        {
+            return await HandleAuthorizationCodeGrant(request);
+        }
+        else if (request.GrantType == "refresh_token")
+        {
+            return await HandleRefreshTokenGrant(request);
+        }
+        else
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "unsupported_grant_type",
+                ErrorDescription = "Only authorization_code and refresh_token grant types are supported"
+            });
+        }
+    }
+
+    private async Task<IActionResult> HandleAuthorizationCodeGrant(TokenRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Code))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "code is required"
+            });
+        }
+
+        if (string.IsNullOrEmpty(request.ClientId))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "client_id is required"
+            });
+        }
+
+        if (string.IsNullOrEmpty(request.RedirectUri))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "redirect_uri is required"
+            });
+        }
+
+        if (string.IsNullOrEmpty(request.CodeVerifier))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "code_verifier is required (PKCE)"
+            });
+        }
+
+        var authCode = await authorizationService.ValidateAuthorizationCodeAsync(
+            request.Code,
+            request.ClientId,
+            request.RedirectUri,
+            request.CodeVerifier);
+
+        if (authCode == null)
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_grant",
+                ErrorDescription = "Invalid, expired, or already used authorization code"
+            });
+        }
+
+        // Generate tokens
+        var accessToken = tokenService.GenerateAccessToken(
+            authCode.ProfileUrl,
+            authCode.ClientId,
+            authCode.Scopes);
+
+        var refreshToken = tokenService.GenerateRefreshToken();
+
+        // Store refresh token
+        dbContext.RefreshTokens.Add(new RefreshTokenEntity
+        {
+            Token = refreshToken,
+            ProfileUrl = authCode.ProfileUrl,
+            ClientId = authCode.ClientId,
+            Scopes = string.Join(" ", authCode.Scopes),
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(settings.Value.RefreshTokenExpirationDays)
+        });
+        await dbContext.SaveChangesAsync();
+
+        return Ok(new TokenResponse
+        {
+            AccessToken = accessToken,
+            TokenType = "Bearer",
+            ExpiresIn = 15 * 60, // 15 minutes in seconds
+            RefreshToken = refreshToken,
+            Scope = string.Join(" ", authCode.Scopes),
+            Me = authCode.ProfileUrl
+        });
+    }
+
+    private async Task<IActionResult> HandleRefreshTokenGrant(TokenRequest request)
+    {
+        if (string.IsNullOrEmpty(request.RefreshToken))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "refresh_token is required"
+            });
+        }
+
+        var storedToken = await dbContext.RefreshTokens
+            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && 
+                                      !t.IsRevoked && 
+                                      t.ExpiresAt > DateTime.UtcNow);
+
+        if (storedToken == null)
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_grant",
+                ErrorDescription = "Invalid or expired refresh token"
+            });
+        }
+
+        // Verify client_id matches if provided
+        if (!string.IsNullOrEmpty(request.ClientId) && storedToken.ClientId != request.ClientId)
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_grant",
+                ErrorDescription = "client_id mismatch"
+            });
+        }
+
+        // Rotate refresh token
+        storedToken.IsRevoked = true;
+        
+        var newRefreshToken = tokenService.GenerateRefreshToken();
+        var scopes = storedToken.Scopes?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+        
+        dbContext.RefreshTokens.Add(new RefreshTokenEntity
+        {
+            Token = newRefreshToken,
+            ProfileUrl = storedToken.ProfileUrl,
+            ClientId = storedToken.ClientId,
+            Scopes = storedToken.Scopes,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(settings.Value.RefreshTokenExpirationDays)
+        });
+
+        await dbContext.SaveChangesAsync();
+
+        // Generate new access token
+        var accessToken = tokenService.GenerateAccessToken(
+            storedToken.ProfileUrl,
+            storedToken.ClientId,
+            scopes);
+
+        return Ok(new TokenResponse
+        {
+            AccessToken = accessToken,
+            TokenType = "Bearer",
+            ExpiresIn = 15 * 60,
+            RefreshToken = newRefreshToken,
+            Scope = storedToken.Scopes,
+            Me = storedToken.ProfileUrl
+        });
+    }
+
+    /// <summary>
+    /// Token introspection endpoint (RFC 7662)
+    /// </summary>
+    [HttpPost("introspect")]
+    [Consumes("application/x-www-form-urlencoded")]
+    public async Task<IActionResult> Introspect([FromForm] string token)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return Ok(new { active = false });
+        }
+
+        var result = await tokenService.ValidateAccessTokenAsync(token);
+        
+        if (!result.IsValid)
+        {
+            return Ok(new { active = false });
+        }
+
+        return Ok(new
+        {
+            active = true,
+            me = result.ProfileUrl,
+            client_id = result.ClientId,
+            scope = string.Join(" ", result.Scopes),
+            exp = new DateTimeOffset(result.ExpiresAt!.Value).ToUnixTimeSeconds()
+        });
+    }
+
+    /// <summary>
+    /// Token revocation endpoint (RFC 7009)
+    /// </summary>
+    [HttpPost("revoke")]
+    [Consumes("application/x-www-form-urlencoded")]
+    public async Task<IActionResult> Revoke([FromForm] string token)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return Ok(); // RFC 7009: Always return 200
+        }
+
+        // Try to find and revoke a refresh token
+        var refreshToken = await dbContext.RefreshTokens
+            .FirstOrDefaultAsync(t => t.Token == token);
+
+        if (refreshToken != null)
+        {
+            refreshToken.IsRevoked = true;
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Note: Access tokens are JWTs and can't be revoked directly
+        // They will simply expire. For stricter revocation, use token introspection
+        
+        return Ok();
+    }
+}
+
+public class TokenRequest
+{
+    [FromForm(Name = "grant_type")]
+    public string GrantType { get; set; } = "";
+    
+    [FromForm(Name = "code")]
+    public string? Code { get; set; }
+    
+    [FromForm(Name = "client_id")]
+    public string? ClientId { get; set; }
+    
+    [FromForm(Name = "redirect_uri")]
+    public string? RedirectUri { get; set; }
+    
+    [FromForm(Name = "code_verifier")]
+    public string? CodeVerifier { get; set; }
+    
+    [FromForm(Name = "refresh_token")]
+    public string? RefreshToken { get; set; }
+}
+
+public class TokenResponse
+{
+    public string AccessToken { get; set; } = "";
+    public string TokenType { get; set; } = "Bearer";
+    public int ExpiresIn { get; set; }
+    public string? RefreshToken { get; set; }
+    public string? Scope { get; set; }
+    public string Me { get; set; } = "";
+}
+
+public class TokenErrorResponse
+{
+    public string Error { get; set; } = "";
+    public string? ErrorDescription { get; set; }
+}
+
+
