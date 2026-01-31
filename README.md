@@ -49,10 +49,6 @@ cp src/Talos.Web/appsettings.example.json src/Talos.Web/appsettings.Development.
 # Edit appsettings.Development.json with your GitHub OAuth credentials
 ```
 
-**Running with Rider/VS Code:**
-- Use the **"Full Stack (API + Frontend)"** run configuration to start both the API and Vite dev server
-- Browser will auto-launch to `http://localhost:5173`
-
 **Running manually:**
 ```bash
 # Terminal 1: Start the API
@@ -63,7 +59,7 @@ cd src/Talos.Web/ClientApp
 npm run dev
 ```
 
-Browse to `http://localhost:5173` - Vite proxies API requests to the .NET backend.
+Vite proxies API requests to the .NET backend.
 
 
 ## Configuration
