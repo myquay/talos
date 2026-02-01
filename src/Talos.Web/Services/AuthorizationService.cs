@@ -60,6 +60,13 @@ public class AuthorizationService(
             return ErrorResult("invalid_request", "me (profile URL) is required");
         }
 
+        // Check if the profile host is allowed (personal server mode)
+        if (!IsProfileHostAllowed(request.Me))
+        {
+            return ErrorResult("access_denied", 
+                "This server is not configured to authenticate users from the requested website.");
+        }
+
         // Discover identity providers from user's profile
         var discoveryResult = await profileDiscovery.DiscoverProfileAsync(request.Me);
         if (!discoveryResult.Success)
@@ -310,6 +317,29 @@ public class AuthorizationService(
             Error = error,
             ErrorDescription = description
         };
+    }
+
+    /// <summary>
+    /// Checks if the profile URL's host is allowed based on the AllowedProfileHosts configuration.
+    /// Returns true if AllowedProfileHosts is null/empty (all hosts allowed) or if the host matches.
+    /// </summary>
+    private bool IsProfileHostAllowed(string profileUrl)
+    {
+        var allowedHosts = talosSettings.Value.AllowedProfileHosts;
+        
+        // If not configured or empty, allow all hosts
+        if (allowedHosts == null || allowedHosts.Length == 0)
+            return true;
+
+        // Try to parse the profile URL and extract the host
+        if (!Uri.TryCreate(profileUrl, UriKind.Absolute, out var uri))
+            return false;
+
+        var host = uri.Host;
+
+        // Case-insensitive exact match against allowed hosts
+        return allowedHosts.Any(allowedHost => 
+            string.Equals(host, allowedHost, StringComparison.OrdinalIgnoreCase));
     }
 }
 

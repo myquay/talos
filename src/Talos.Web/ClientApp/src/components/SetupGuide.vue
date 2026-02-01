@@ -62,7 +62,7 @@
     <div class="mt-8 text-center">
       <p class="text-gray-600">
         Need help? Check the 
-        <a href="https://github.com/yourusername/talos#readme" 
+        <a href="https://github.com/myquay/talos#readme" 
            class="text-indigo-600 hover:text-indigo-800 underline">documentation</a>.
       </p>
     </div>
@@ -155,7 +155,8 @@ function getConfigExample(category: string): string {
   "PendingAuthenticationExpirationMinutes": 30
 }`,
     Talos: `"Talos": {
-  "BaseUrl": "https://your-domain.com"
+  "BaseUrl": "https://your-domain.com",
+  "AllowedProfileHosts": null
 }`,
     Database: `"ConnectionStrings": {
   "DefaultConnection": "Data Source=talos.db"
@@ -194,6 +195,7 @@ function getCategoryHelp(category: string): string {
         <li>Set BaseUrl to the public URL where Talos is hosted</li>
         <li>Include the protocol (https://) but no trailing slash</li>
         <li>This URL is used for OAuth callbacks and token issuing</li>
+        <li>Optionally set AllowedProfileHosts to an array of hostnames to restrict which websites can authenticate (personal server mode)</li>
       </ol>
     `
   }
