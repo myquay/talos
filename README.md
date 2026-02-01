@@ -90,6 +90,19 @@ For a user to authenticate via Talos, their website must:
 | `TALOS_BASE_URL` | Base URL where Talos is hosted |
 | `JWT_SECRET_KEY` | Secret key for JWT signing (min 32 chars) |
 
+### Personal Server Mode
+
+To restrict Talos to only authenticate users from specific websites (useful for personal servers):
+
+```json
+"Talos": {
+  "BaseUrl": "https://auth.example.com",
+  "AllowedProfileHosts": ["jane.example.com", "blog.jane.example.com"]
+}
+```
+
+When configured, only users whose `me` URL matches one of the allowed hosts can authenticate. Leave as `null` or omit to allow all hosts (default behavior).
+
 ## API Endpoints
 
 | Endpoint | Description |

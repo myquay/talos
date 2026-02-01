@@ -4,12 +4,6 @@
     <div class="text-center mb-12">
       <h1 class="text-4xl font-bold text-gray-900 mb-4">Talos</h1>
       <p class="text-xl text-gray-600">An IndieAuth Authorization Server</p>
-      <div class="mt-4 flex items-center justify-center gap-2">
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-          <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-          Configured &amp; Ready
-        </span>
-      </div>
     </div>
 
     <!-- What is IndieAuth -->
@@ -75,6 +69,14 @@
       <p class="text-gray-600 mt-4">
         <strong>Important:</strong> Your GitHub profile must also link back to your website for verification to work.
       </p>
+      
+      <!-- Personal Server Mode note -->
+      <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+        <p class="text-sm text-blue-800">
+          <strong>Self-hosted tip:</strong> Server operators can optionally restrict authentication to specific websites 
+          using the <code class="bg-blue-100 px-1 rounded">AllowedProfileHosts</code> configuration setting.
+        </p>
+      </div>
     </section>
 
     <!-- Endpoints -->
@@ -139,7 +141,7 @@
           </a>
         </li>
         <li>
-          <a href="https://github.com/yourusername/talos" target="_blank"
+          <a href="https://github.com/myquay/talos" target="_blank"
              class="text-indigo-600 hover:text-indigo-800 flex items-center gap-2">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path fill-rule="evenodd" clip-rule="evenodd" 
