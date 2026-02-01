@@ -1,11 +1,8 @@
 <template>
   <div class="max-w-4xl mx-auto py-12 px-4">
-    <!-- Hero -->
-    <div class="text-center mb-12">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Talos</h1>
-      <p class="text-xl text-gray-600">An IndieAuth Authorization Server</p>
-    </div>
 
+    <img src="/talos-logo.png" alt="Talos Illustration" class="mx-auto mb-12 w-64"/>
+    
     <!-- What is IndieAuth -->
     <section class="mb-12">
       <h2 class="text-2xl font-bold text-gray-900 mb-4">What is IndieAuth?</h2>
