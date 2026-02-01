@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
 import ProviderSelectView from '../views/ProviderSelectView.vue'
 import ConsentView from '../views/ConsentView.vue'
 import ErrorView from '../views/ErrorView.vue'
@@ -6,6 +7,11 @@ import ErrorView from '../views/ErrorView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomeView
+    },
     {
       path: '/select-provider',
       name: 'provider-select',
@@ -20,10 +26,6 @@ const router = createRouter({
       path: '/error',
       name: 'error',
       component: ErrorView
-    },
-    {
-      path: '/',
-      redirect: '/select-provider'
     }
   ]
 })
