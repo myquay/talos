@@ -74,6 +74,7 @@ builder.Services.AddHttpClient("GitHub", client =>
 });
 
 // Register application services
+builder.Services.AddSingleton<IMicroformatsService, MicroformatsService>();
 builder.Services.AddScoped<IProfileDiscoveryService, ProfileDiscoveryService>();
 builder.Services.AddScoped<IIdentityProvider, GitHubIdentityProvider>();
 builder.Services.AddScoped<IIdentityProviderFactory, IdentityProviderFactory>();

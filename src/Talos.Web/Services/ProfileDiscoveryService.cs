@@ -1,4 +1,4 @@
-using HtmlAgilityPack;
+using System.Text.RegularExpressions;
 using Talos.Web.Models;
 using Talos.Web.Services.IdentityProviders;
 
@@ -7,6 +7,7 @@ namespace Talos.Web.Services;
 public class ProfileDiscoveryService(
     IHttpClientFactory httpClientFactory,
     IIdentityProviderFactory providerFactory,
+    IMicroformatsService microformatsService,
     ILogger<ProfileDiscoveryService> logger)
     : IProfileDiscoveryService
 {
@@ -29,11 +30,12 @@ public class ProfileDiscoveryService(
             }
 
             var html = await response.Content.ReadAsStringAsync();
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
+            
+            // Parse microformats using library
+            var microformats = microformatsService.Parse(html, new Uri(result.ProfileUrl));
 
             // Discover rel="me" links
-            var relMeLinks = DiscoverRelMeLinks(doc, result.ProfileUrl);
+            var relMeLinks = microformats.RelMeLinks;
             
             // Match links against supported identity providers
             foreach (var link in relMeLinks)
@@ -50,9 +52,11 @@ public class ProfileDiscoveryService(
                 }
             }
 
-            // Discover IndieAuth endpoints
-            result.AuthorizationEndpoint = DiscoverEndpoint(doc, response, "authorization_endpoint");
-            result.TokenEndpoint = DiscoverEndpoint(doc, response, "token_endpoint");
+            // Discover IndieAuth endpoints (check HTTP headers first, then HTML)
+            result.AuthorizationEndpoint = DiscoverEndpointFromHeaders(response, "authorization_endpoint") 
+                                          ?? microformats.AuthorizationEndpoint;
+            result.TokenEndpoint = DiscoverEndpointFromHeaders(response, "token_endpoint") 
+                                  ?? microformats.TokenEndpoint;
 
             result.Success = true;
         }
@@ -65,38 +69,14 @@ public class ProfileDiscoveryService(
         return result;
     }
 
-    private static List<string> DiscoverRelMeLinks(HtmlDocument doc, string baseUrl)
+    private static string? DiscoverEndpointFromHeaders(HttpResponseMessage response, string rel)
     {
-        var links = new List<string>();
-        var baseUri = new Uri(baseUrl);
-
-        // Find all <a rel="me"> and <link rel="me"> elements
-        var relMeNodes = doc.DocumentNode.SelectNodes("//a[@rel='me']|//link[@rel='me']");
-
-        foreach (var node in relMeNodes)
-        {
-            var href = node.GetAttributeValue("href", "");
-            if (string.IsNullOrWhiteSpace(href))
-                continue;
-
-            // Resolve relative URLs
-            if (Uri.TryCreate(baseUri, href, out var absoluteUri))
-            {
-                links.Add(absoluteUri.ToString());
-            }
-        }
-
-        return links.Distinct().ToList();
-    }
-
-    private static string? DiscoverEndpoint(HtmlDocument doc, HttpResponseMessage response, string rel)
-    {
-        // Check HTTP Link header first
+        // Check HTTP Link header (RFC 8288)
         if (response.Headers.TryGetValues("Link", out var linkHeaders))
         {
             foreach (var header in linkHeaders)
             {
-                var match = System.Text.RegularExpressions.Regex.Match(
+                var match = Regex.Match(
                     header, 
                     $"""<([^>]+)>;\s*rel="?{rel}"?""");
                 if (match.Success)
@@ -105,11 +85,7 @@ public class ProfileDiscoveryService(
                 }
             }
         }
-
-        // Check HTML <link> elements
-        var linkNode = doc.DocumentNode.SelectSingleNode($"//link[@rel='{rel}']");
-        var href = linkNode.GetAttributeValue("href", string.Empty);
-        return string.IsNullOrEmpty(href) ? null : href;
+        return null;
     }
 
     private static string NormalizeProfileUrl(string url)
@@ -130,4 +106,3 @@ public class ProfileDiscoveryService(
         return url.ToLowerInvariant();
     }
 }
-
