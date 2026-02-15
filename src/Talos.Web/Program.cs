@@ -64,7 +64,7 @@ builder.Services.AddHttpClient("ProfileDiscovery", client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "Talos-IndieAuth");
     client.Timeout = TimeSpan.FromSeconds(30);
-});
+}).ConfigurePrimaryHttpMessageHandler(_ => SsrfProtection.CreateSsrfSafeHandler());
 
 builder.Services.AddHttpClient("GitHub", client =>
 {
@@ -78,7 +78,7 @@ builder.Services.AddHttpClient("ClientDiscovery", client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Talos-IndieAuth");
     client.DefaultRequestHeaders.Add("Accept", "application/json, text/html");
     client.Timeout = TimeSpan.FromSeconds(10);
-});
+}).ConfigurePrimaryHttpMessageHandler(_ => SsrfProtection.CreateSsrfSafeHandler());
 
 // Register application services
 builder.Services.AddSingleton<IMicroformatsService, MicroformatsService>();
