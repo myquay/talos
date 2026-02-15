@@ -1,20 +1,18 @@
 # Talos
 
-A minimal IndieAuth authorization server built with .NET 10 and Vue.js. Talos authenticates users via third-party identity providers (starting with GitHub) discovered from the user's website using RelMeAuth.
+A minimal open source IndieAuth authorization server built with .NET 10 and Vue.js. Talos authenticates users via third-party identity providers (starting with GitHub) discovered from the user's website using RelMeAuth.
 
 ## Features
 
-- 🔐 **IndieAuth Compliant** - Full implementation of the IndieAuth specification
-- 🐙 **GitHub Authentication** - Authenticate users via GitHub OAuth
-- 🔍 **RelMeAuth Discovery** - Automatically discover identity providers from `rel="me"` links
-- 🔑 **PKCE Support** - Proof Key for Code Exchange (S256) for secure authorization
-- 🎫 **JWT Access Tokens** - Short-lived JWT tokens with proper IndieAuth claims
-- 🔄 **Refresh Tokens** - Opaque, revokable refresh tokens
-- 🚀 **Vue.js Frontend** - Modern SPA for provider selection and consent
+- **IndieAuth Compliant** - Implementation of the IndieAuth specification
+- **GitHub Authentication** - Authenticate users via GitHub OAuth
+- **RelMeAuth Discovery** - Automatically discover identity providers from `rel="me"` links
+- **Vue.js Frontend** - Modern SPA for provider selection and consent
+- **Easy setup** - Minimal dependencies, first-run configuration wizard
 
 ## How It Works
 
-1. User enters their website URL (e.g., `https://jane.example.com/`)
+1. User enters their website URL
 2. Talos fetches the website and discovers `rel="me"` links
 3. User authenticates with a discovered provider (e.g., GitHub)
 4. Talos verifies the GitHub profile links back to the user's website
@@ -97,7 +95,7 @@ To restrict Talos to only authenticate users from specific websites (useful for 
 ```json
 "Talos": {
   "BaseUrl": "https://auth.example.com",
-  "AllowedProfileHosts": ["jane.example.com", "blog.jane.example.com"]
+  "AllowedProfileHosts": ["michael-mckenna.com"]
 }
 ```
 
