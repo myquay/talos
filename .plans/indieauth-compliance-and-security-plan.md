@@ -274,9 +274,10 @@ Priority: **Should fix before production use**
   - 12 new tests (AuthorizationServiceOptionalMeTests); 285 total tests passing
   - See [gap-14-optional-me.md](gap-14-optional-me.md) for details
 
-- [ ] **2.5 — Require client_id in refresh token grant** (GAP-13)
-  - Change refresh token handler to require `client_id` (not just "if provided")
-  - Write test: refresh request without `client_id` → error
+- [x] **2.5 — Require client_id in refresh token grant** (GAP-13)
+  - `client_id` is now required in the refresh token grant per IndieAuth spec §5.3.3 (REFRESH-2)
+  - Added required check before token lookup; changed "if provided" mismatch check to unconditional
+  - 7 new tests (TokenControllerRefreshTokenTests); 292 total tests passing
 
 - [ ] **2.6 — Add SSRF protection** (GAP-12)
   - Before fetching `client_id` or any user-provided URL:
