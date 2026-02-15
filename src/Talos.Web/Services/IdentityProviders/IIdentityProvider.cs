@@ -7,7 +7,7 @@ public interface IIdentityProvider
     bool CanHandle(string url);
     string GetAuthorizationUrl(string state, string redirectUri);
     Task<ProviderAuthResult> ExchangeCodeAsync(string code, string redirectUri);
-    Task<ProviderVerificationResult> VerifyProfileAsync(string accessToken, string expectedProfileUrl);
+    Task<ProviderVerificationResult> VerifyProfileAsync(string accessToken, string expectedProfileUrl, string userWebsiteUrl);
 }
 
 public class ProviderAuthResult

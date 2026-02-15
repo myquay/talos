@@ -75,7 +75,8 @@ public class CallbackController(
         // Verify the authenticated user matches expected profile
         var verifyResult = await provider.VerifyProfileAsync(
             tokenResult.AccessToken!, 
-            selectedProvider.ProfileUrl);
+            selectedProvider.ProfileUrl,
+            pending.ProfileUrl);
 
         if (!verifyResult.Verified)
         {

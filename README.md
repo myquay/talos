@@ -79,7 +79,8 @@ For a user to authenticate via Talos, their website must:
    <a href="https://github.com/username" rel="me">GitHub</a>
    ```
 
-3. **Have reciprocal link** on the identity provider profile back to their website
+3. **Have reciprocal link** on the identity provider profile back to their website:
+   - **GitHub**: Your website URL must be in your GitHub profile's **Website** field or mentioned in your **Bio**. This is verified during authentication to prove you own both the website and the GitHub account.
 
 ### Environment Variables
 
@@ -108,7 +109,8 @@ When configured, only users whose `me` URL matches one of the allowed hosts can 
 | Endpoint | Description |
 |----------|-------------|
 | `GET /auth` | Authorization endpoint (IndieAuth) |
-| `POST /token` | Token endpoint (code exchange) |
+| `POST /auth` | Authorization code verification (profile-only, no access token) |
+| `POST /token` | Token endpoint (code exchange for access token) |
 | `POST /token/introspect` | Token introspection (RFC 7662) |
 | `POST /token/revoke` | Token revocation (RFC 7009) |
 | `GET /.well-known/oauth-authorization-server` | Server metadata |

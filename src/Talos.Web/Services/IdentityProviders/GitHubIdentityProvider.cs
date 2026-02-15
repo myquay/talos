@@ -125,7 +125,7 @@ public class GitHubIdentityProvider : IIdentityProvider
         return result;
     }
 
-    public async Task<ProviderVerificationResult> VerifyProfileAsync(string accessToken, string expectedProfileUrl)
+    public async Task<ProviderVerificationResult> VerifyProfileAsync(string accessToken, string expectedProfileUrl, string userWebsiteUrl)
     {
         var result = new ProviderVerificationResult();
 
@@ -149,23 +149,28 @@ public class GitHubIdentityProvider : IIdentityProvider
             var expectedUsername = match.Groups[1].Value;
 
             // Verify the GitHub username matches
-            if (string.Equals(userInfo.Login, expectedUsername, StringComparison.OrdinalIgnoreCase))
-            {
-                result.Verified = true;
-                result.ProfileUrl = userInfo.HtmlUrl;
-                result.Name = userInfo.Name ?? userInfo.Login;
-                result.Email = userInfo.Email;
-
-                // Check for reciprocal link in user's bio or blog
-                if (!string.IsNullOrEmpty(userInfo.Blog) || !string.IsNullOrEmpty(userInfo.Bio))
-                {
-                    _logger.LogDebug("GitHub user has blog: {Blog}, bio: {Bio}", userInfo.Blog, userInfo.Bio);
-                }
-            }
-            else
+            if (!string.Equals(userInfo.Login, expectedUsername, StringComparison.OrdinalIgnoreCase))
             {
                 result.Error = "GitHub username does not match the expected profile";
+                return result;
             }
+
+            // Verify reciprocal link - GitHub profile must link back to user's website
+            if (!HasReciprocalLink(userInfo, userWebsiteUrl))
+            {
+                _logger.LogWarning("GitHub profile {Username} does not have a reciprocal link to {Website}", 
+                    userInfo.Login, userWebsiteUrl);
+                result.Error = "GitHub profile must link back to your website in the blog field or bio";
+                return result;
+            }
+
+            _logger.LogDebug("Verified reciprocal link from GitHub profile {Username} to {Website}", 
+                userInfo.Login, userWebsiteUrl);
+
+            result.Verified = true;
+            result.ProfileUrl = userInfo.HtmlUrl;
+            result.Name = userInfo.Name ?? userInfo.Login;
+            result.Email = userInfo.Email;
         }
         catch (Exception ex)
         {
@@ -174,6 +179,75 @@ public class GitHubIdentityProvider : IIdentityProvider
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Checks if the GitHub profile contains a reciprocal link back to the user's website.
+    /// The link can be in the blog field or mentioned in the bio.
+    /// </summary>
+    private bool HasReciprocalLink(GitHubUserInfo userInfo, string userWebsiteUrl)
+    {
+        if (string.IsNullOrEmpty(userWebsiteUrl))
+            return false;
+
+        // Normalize the user's website URL for comparison
+        var websiteHost = GetNormalizedHost(userWebsiteUrl);
+        if (string.IsNullOrEmpty(websiteHost))
+            return false;
+
+        // Check blog field
+        if (!string.IsNullOrEmpty(userInfo.Blog))
+        {
+            var blogHost = GetNormalizedHost(userInfo.Blog);
+            if (string.Equals(blogHost, websiteHost, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("Found reciprocal link in GitHub blog field: {Blog}", userInfo.Blog);
+                return true;
+            }
+        }
+
+        // Check bio for URL containing the website host
+        if (!string.IsNullOrEmpty(userInfo.Bio))
+        {
+            // Look for the website URL or host in the bio
+            if (userInfo.Bio.Contains(websiteHost, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("Found reciprocal link in GitHub bio: {Bio}", userInfo.Bio);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Extracts and normalizes the host from a URL, handling URLs with or without scheme.
+    /// </summary>
+    private static string? GetNormalizedHost(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        // Add scheme if missing (common for blog fields)
+        var urlToProcess = url.Trim();
+        if (!urlToProcess.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !urlToProcess.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            urlToProcess = "https://" + urlToProcess;
+        }
+
+        if (Uri.TryCreate(urlToProcess, UriKind.Absolute, out var uri))
+        {
+            // Remove www. prefix for comparison
+            var host = uri.Host;
+            if (host.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+            {
+                host = host[4..];
+            }
+            return host.ToLowerInvariant();
+        }
+
+        return null;
     }
 
     private async Task<GitHubUserInfo?> GetUserInfoAsync(string accessToken)
