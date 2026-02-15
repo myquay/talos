@@ -157,5 +157,41 @@ public class UrlValidatorTests
     {
         UrlValidator.NormalizeProfileUrl(input).Should().Be(expected);
     }
+
+    // ===== IsRedirectUriInPublishedList Tests =====
+
+    [Fact]
+    public void IsRedirectUriInPublishedList_ExactMatch_ReturnsTrue()
+    {
+        var list = new List<string> { "https://app.example.com/callback", "https://other.example.com/cb" };
+        UrlValidator.IsRedirectUriInPublishedList("https://app.example.com/callback", list).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsRedirectUriInPublishedList_NoMatch_ReturnsFalse()
+    {
+        var list = new List<string> { "https://app.example.com/callback" };
+        UrlValidator.IsRedirectUriInPublishedList("https://evil.com/callback", list).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRedirectUriInPublishedList_CaseSensitive_ReturnsFalse()
+    {
+        var list = new List<string> { "https://app.example.com/Callback" };
+        UrlValidator.IsRedirectUriInPublishedList("https://app.example.com/callback", list).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRedirectUriInPublishedList_EmptyList_ReturnsFalse()
+    {
+        UrlValidator.IsRedirectUriInPublishedList("https://app.example.com/callback", new List<string>()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRedirectUriInPublishedList_MultipleMatches_ReturnsTrue()
+    {
+        var list = new List<string> { "https://a.com/cb", "https://b.com/cb", "https://app.example.com/callback" };
+        UrlValidator.IsRedirectUriInPublishedList("https://app.example.com/callback", list).Should().BeTrue();
+    }
 }
 

@@ -73,9 +73,17 @@ builder.Services.AddHttpClient("GitHub", client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Talos-IndieAuth");
 });
 
+builder.Services.AddHttpClient("ClientDiscovery", client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "Talos-IndieAuth");
+    client.DefaultRequestHeaders.Add("Accept", "application/json, text/html");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Register application services
 builder.Services.AddSingleton<IMicroformatsService, MicroformatsService>();
 builder.Services.AddScoped<IProfileDiscoveryService, ProfileDiscoveryService>();
+builder.Services.AddScoped<IClientDiscoveryService, ClientDiscoveryService>();
 builder.Services.AddScoped<IIdentityProvider, GitHubIdentityProvider>();
 builder.Services.AddScoped<IIdentityProviderFactory, IdentityProviderFactory>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -84,11 +92,11 @@ builder.Services.AddScoped<IPkceService, PkceService>();
 
 var app = builder.Build();
 
-// Ensure database is created
+// Apply pending EF Core migrations on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TalosDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 // Security headers middleware

@@ -255,13 +255,17 @@ Priority: **Should fix before production use**
   - 7 valid + 15 invalid validator tests + 9 service-level integration tests added; 1 existing test updated (235 total tests passing)
   - See [gap-5-profile-url-validation.md](gap-5-profile-url-validation.md) for details
 
-- [ ] **2.3 — Implement client_id fetching** (GAP-4)
-  - Create `IClientDiscoveryService` to fetch and parse client metadata from `client_id` URL
-  - Support JSON metadata document (preferred) and HTML with h-app microformats (legacy)
-  - Cache responses with respect to Cache-Control headers
-  - Verify `client_id` in fetched document matches request `client_id`
-  - Display client name + logo on consent screen
-  - Write tests with mocked HTTP responses
+- [x] **2.3 — Implement client_id fetching** (GAP-4) ✅
+  - Created `IClientDiscoveryService` / `ClientDiscoveryService` to fetch and parse client metadata from `client_id` URL
+  - Supports JSON metadata document (§4.2.1) with `JsonPropertyName` attributes for snake_case mapping
+  - Supports HTML with h-app microformats (§4.2.2) via existing Microformats NuGet package
+  - DISC-6: Loopback client_id URLs are not fetched
+  - DISC-8: `client_id` and `client_uri` in JSON document validated against request
+  - DISC-9: Cross-origin redirect_uris verified against published `redirect_uris` list
+  - Client name/logo stored in `PendingAuthenticationEntity` and displayed on consent screen
+  - EF migration `AddClientMetadataToPendingAuth` adds `ClientName`, `ClientLogoUri` columns
+  - 38 new tests added (14 ClientDiscoveryService, 5 UrlValidator, 8 MicroformatsServiceHApp, 11 AuthorizationServiceClientDiscovery); 273 total tests passing
+  - See [gap-4-client-discovery.md](gap-4-client-discovery.md) for details
 
 - [ ] **2.4 — Make `me` parameter optional** (GAP-14)
   - Remove the required check for `me` in `CreateAuthorizationAsync`

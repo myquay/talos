@@ -34,5 +34,20 @@ public class MicroformatsResult
     /// The Microsub endpoint URL.
     /// </summary>
     public string? Microsub { get; set; }
+
+    /// <summary>
+    /// Client application name from h-app microformat (§4.2.2), if present.
+    /// </summary>
+    public string? AppName { get; set; }
+
+    /// <summary>
+    /// Client application logo URL from h-app microformat (§4.2.2), if present.
+    /// </summary>
+    public string? AppLogoUrl { get; set; }
+
+    /// <summary>
+    /// Client application URL from h-app microformat (§4.2.2), if present.
+    /// </summary>
+    public string? AppUrl { get; set; }
 }
 

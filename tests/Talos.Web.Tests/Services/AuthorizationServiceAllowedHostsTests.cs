@@ -18,6 +18,7 @@ public class AuthorizationServiceAllowedHostsTests : IDisposable
 {
     private readonly TalosDbContext _dbContext;
     private readonly Mock<IProfileDiscoveryService> _mockProfileDiscovery;
+    private readonly Mock<IClientDiscoveryService> _mockClientDiscovery;
     private readonly Mock<IPkceService> _mockPkceService;
     private readonly Mock<IIdentityProviderFactory> _mockProviderFactory;
     private readonly IndieAuthSettings _indieAuthSettings;
@@ -33,6 +34,9 @@ public class AuthorizationServiceAllowedHostsTests : IDisposable
         _dbContext = new TalosDbContext(options);
 
         _mockProfileDiscovery = new Mock<IProfileDiscoveryService>();
+        _mockClientDiscovery = new Mock<IClientDiscoveryService>();
+        _mockClientDiscovery.Setup(x => x.DiscoverClientAsync(It.IsAny<string>()))
+            .ReturnsAsync((string cid) => new Models.ClientInfo { ClientId = cid, WasFetched = false });
         _mockPkceService = new Mock<IPkceService>();
         _mockProviderFactory = new Mock<IIdentityProviderFactory>();
         _mockLogger = new Mock<ILogger<AuthorizationService>>();
@@ -66,6 +70,7 @@ public class AuthorizationServiceAllowedHostsTests : IDisposable
         return new AuthorizationService(
             _dbContext,
             _mockProfileDiscovery.Object,
+            _mockClientDiscovery.Object,
             _mockPkceService.Object,
             _mockProviderFactory.Object,
             indieAuthOptions.Object,

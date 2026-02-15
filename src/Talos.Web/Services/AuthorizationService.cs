@@ -11,6 +11,7 @@ namespace Talos.Web.Services;
 public class AuthorizationService(
     TalosDbContext dbContext,
     IProfileDiscoveryService profileDiscovery,
+    IClientDiscoveryService clientDiscovery,
     IPkceService pkceService,
     IIdentityProviderFactory providerFactory,
     IOptions<IndieAuthSettings> settings,
@@ -47,11 +48,32 @@ public class AuthorizationService(
         }
 
         // Validate redirect_uri per IndieAuth spec §4.2.2, §5.2, §10.1
+        // First check same-origin; if cross-origin, fetch client_id to verify (DISC-9)
+        Models.ClientInfo? clientInfo = null;
         if (!UrlValidator.IsValidRedirectUri(request.RedirectUri, request.ClientId))
         {
-            return ErrorResult("invalid_request",
-                "redirect_uri is not valid or does not match client_id",
-                redirectUriUntrusted: true);
+            // redirect_uri is cross-origin (or structurally invalid).
+            // Structurally invalid redirect URIs (bad scheme, dot-segments) are always rejected.
+            if (UrlValidator.HasDangerousScheme(request.RedirectUri) ||
+                !UrlValidator.IsValidHttpsUrl(request.RedirectUri) ||
+                UrlValidator.HasDotSegments(request.RedirectUri))
+            {
+                return ErrorResult("invalid_request",
+                    "redirect_uri is not valid or does not match client_id",
+                    redirectUriUntrusted: true);
+            }
+
+            // Cross-origin redirect — fetch client_id to check published redirect_uris (DISC-9)
+            clientInfo = await clientDiscovery.DiscoverClientAsync(request.ClientId);
+            if (!clientInfo.WasFetched || clientInfo.RedirectUris.Count == 0 ||
+                !UrlValidator.IsRedirectUriInPublishedList(request.RedirectUri, clientInfo.RedirectUris))
+            {
+                return ErrorResult("invalid_request",
+                    "redirect_uri is not valid or does not match client_id",
+                    redirectUriUntrusted: true);
+            }
+
+            // Cross-origin redirect validated via published list — proceed
         }
 
         if (string.IsNullOrEmpty(request.State))
@@ -89,6 +111,9 @@ public class AuthorizationService(
                 "This server is not configured to authenticate users from the requested website.");
         }
 
+        // Fetch client_id for display if we haven't already (same-origin redirect case)
+        clientInfo ??= await clientDiscovery.DiscoverClientAsync(request.ClientId);
+
         // Discover identity providers from user's profile
         var discoveryResult = await profileDiscovery.DiscoverProfileAsync(request.Me);
         if (!discoveryResult.Success)
@@ -116,6 +141,8 @@ public class AuthorizationService(
             Scopes = string.Join(" ", scopes),
             ProfileUrl = discoveryResult.ProfileUrl,
             ProvidersJson = System.Text.Json.JsonSerializer.Serialize(discoveryResult.Providers),
+            ClientName = clientInfo.ClientName,
+            ClientLogoUri = clientInfo.LogoUri,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(settings.Value.PendingAuthenticationExpirationMinutes)
         };
@@ -186,6 +213,8 @@ public class AuthorizationService(
             ProviderState = entity.ProviderState,
             IsAuthenticated = entity.IsAuthenticated,
             IsConsentGiven = entity.IsConsentGiven,
+            ClientName = entity.ClientName,
+            ClientLogoUri = entity.ClientLogoUri,
             CreatedAt = entity.CreatedAt,
             ExpiresAt = entity.ExpiresAt
         };

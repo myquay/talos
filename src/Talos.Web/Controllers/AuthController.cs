@@ -186,8 +186,8 @@ public class AuthController(
             return BadRequest(new { error = "Not authenticated yet" });
         }
 
-        // Extract client info from client_id URL
-        var clientName = new Uri(pending.ClientId).Host;
+        // Extract client info from client_id URL (use discovered name if available)
+        var clientName = pending.ClientName ?? new Uri(pending.ClientId).Host;
 
         return Ok(new
         {
@@ -195,7 +195,8 @@ public class AuthController(
             {
                 clientId = pending.ClientId,
                 name = clientName,
-                url = pending.ClientId
+                url = pending.ClientId,
+                logoUrl = pending.ClientLogoUri
             },
             scopes = pending.Scopes,
             profileUrl = pending.ProfileUrl
