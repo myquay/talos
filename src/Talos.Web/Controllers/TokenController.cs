@@ -153,6 +153,16 @@ public class TokenController(
             });
         }
 
+        // client_id is required per IndieAuth spec §5.3.3 (REFRESH-2 / GAP-13)
+        if (string.IsNullOrEmpty(request.ClientId))
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_request",
+                ErrorDescription = "client_id is required"
+            });
+        }
+
         var storedToken = await dbContext.RefreshTokens
             .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && 
                                       !t.IsRevoked && 
@@ -167,8 +177,8 @@ public class TokenController(
             });
         }
 
-        // Verify client_id matches if provided
-        if (!string.IsNullOrEmpty(request.ClientId) && storedToken.ClientId != request.ClientId)
+        // Verify client_id matches the token's bound client
+        if (storedToken.ClientId != request.ClientId)
         {
             return BadRequest(new TokenErrorResponse
             {
