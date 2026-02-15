@@ -123,45 +123,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TalosDbContext>();
-
-    // If the database was created outside of EF migrations (e.g. via EnsureCreated),
-    // the tables exist but __EFMigrationsHistory does not. Detect this case and
-    // seed the history so Migrate() doesn't try to re-create existing tables.
-    var conn = db.Database.GetDbConnection();
-    await conn.OpenAsync();
-    await using (var cmd = conn.CreateCommand())
-    {
-        cmd.CommandText = """
-            SELECT COUNT(*) FROM sqlite_master
-            WHERE type = 'table' AND name = '__EFMigrationsHistory'
-            """;
-        var historyExists = Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
-
-        if (!historyExists)
-        {
-            // Check whether the schema already has application tables
-            cmd.CommandText = """
-                SELECT COUNT(*) FROM sqlite_master
-                WHERE type = 'table' AND name = 'AuthorizationCodes'
-                """;
-            var tablesExist = Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
-
-            if (tablesExist)
-            {
-                cmd.CommandText = """
-                    CREATE TABLE "__EFMigrationsHistory" (
-                        "MigrationId" TEXT NOT NULL PRIMARY KEY,
-                        "ProductVersion" TEXT NOT NULL
-                    );
-                    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-                    VALUES ('20260215104808_AddClientMetadataToPendingAuth', '10.0.2');
-                    """;
-                await cmd.ExecuteNonQueryAsync();
-            }
-        }
-    }
-
-    db.Database.Migrate();
+    await DatabaseMigrationHelper.MigrateAsync(db);
 }
 
 // Security headers middleware
