@@ -178,7 +178,7 @@ Based on a code review of the Talos codebase, here are the key observations:
 | GAP-4 | **No client_id fetching/discovery** — server never fetches the `client_id` URL to discover client metadata or display app info to user | MEDIUM | DISC-5, AUTH-11, SEC-1, SEC-2 |
 | GAP-5 | **Profile URL validation incomplete** — `NormalizeProfileUrl` in `ProfileDiscoveryService` does not validate against all spec requirements (no port check, no IP check, no dot-segment check, no fragment check, no userinfo check) | MEDIUM | ID-2 through ID-8 |
 | GAP-6 | ~~**No scope-gating on token issuance**~~ — **FIXED** ✅ Token endpoint now rejects codes with empty scope; returns `invalid_grant` error directing client to use auth endpoint | ~~HIGH~~ | REDEEM-5, AUTH-6 |
-| GAP-7 | **Introspection endpoint has no authorization** — `/token/introspect` accepts any request with no authentication required (spec says MUST require auth) | HIGH | INTRO-2, INTRO-3 |
+| GAP-7 | ~~**Introspection endpoint has no authorization**~~ — **FIXED** ✅ `/token/introspect` now requires `Authorization: Bearer <secret>` with configurable `IntrospectionSecret`; constant-time comparison; fail-closed if unconfigured | ~~HIGH~~ | INTRO-2, INTRO-3 |
 | GAP-8 | **Metadata missing `authorization_response_iss_parameter_supported`** — should be `true` since `iss` is required | LOW | §4.1.1 |
 | GAP-9 | **No `indieauth-metadata` link relation** served from user profile pages — the `.well-known` endpoint exists but profile pages don't advertise it | MEDIUM | DISC-1 |
 | GAP-10 | **No userinfo endpoint** — optional but listed in metadata considerations | LOW | USERINFO-1 |
@@ -222,11 +222,13 @@ Priority: **Must fix before any deployment**
   - 6 scope-parsing tests + 5 token endpoint scope-gating tests added (173 total tests passing)
   - See [gap-6-17-scope-gating.md](gap-6-17-scope-gating.md) for details
 
-- [ ] **1.4 — Require authorization on introspection endpoint** (GAP-7)
-  - Add Bearer token authentication to `/token/introspect`
-  - Options: require a pre-shared token, or require a valid access token from the resource server
-  - Return HTTP 401 if missing/invalid authorization
-  - Write tests: unauthenticated request → 401; authenticated request → normal response
+- [x] **1.4 — Require authorization on introspection endpoint** (GAP-7) ✅
+  - Configurable `IntrospectionSecret` added to `IndieAuthSettings`; resource servers present it as `Authorization: Bearer <secret>`
+  - Fail-closed: if no secret configured, all introspection requests return 401
+  - Constant-time comparison via `CryptographicOperations.FixedTimeEquals` prevents timing attacks
+  - Metadata updated with `introspection_endpoint_auth_methods_supported: ["Bearer"]` (partially addresses GAP-20)
+  - 11 new auth tests + 3 existing tests updated to include auth header (184 total tests passing)
+  - See [gap-7-introspection-auth.md](gap-7-introspection-auth.md) for details
 
 - [x] **1.5 — Fix introspection `active` field type** (GAP-16) ✅
   - Replaced anonymous objects with strongly-typed `IntrospectionResponse` class using `[JsonPropertyName]` attributes

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -217,6 +219,12 @@ public class TokenController(
     [Consumes("application/x-www-form-urlencoded")]
     public async Task<IActionResult> Introspect([FromForm] string token)
     {
+        // Per IndieAuth §6.1 — introspection MUST require authorization
+        if (!IsIntrospectionAuthorized())
+        {
+            return Unauthorized(new { error = "unauthorized", error_description = "Bearer token required" });
+        }
+
         if (string.IsNullOrEmpty(token))
         {
             return Ok(new IntrospectionResponse { Active = false });
@@ -237,6 +245,37 @@ public class TokenController(
             Scope = string.Join(" ", result.Scopes),
             Exp = new DateTimeOffset(result.ExpiresAt!.Value).ToUnixTimeSeconds()
         });
+    }
+
+    /// <summary>
+    /// Validates the Authorization header against the configured introspection secret.
+    /// Per IndieAuth §6.1 and RFC 7662, introspection MUST require authorization.
+    /// Uses constant-time comparison to prevent timing attacks.
+    /// </summary>
+    private bool IsIntrospectionAuthorized()
+    {
+        var secret = settings.Value.IntrospectionSecret;
+
+        // Fail closed: if no secret is configured, reject all requests
+        if (string.IsNullOrEmpty(secret))
+            return false;
+
+        var authHeader = Request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(authHeader))
+            return false;
+
+        // Expect "Bearer <secret>"
+        if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var provided = authHeader["Bearer ".Length..].Trim();
+        if (string.IsNullOrEmpty(provided))
+            return false;
+
+        // Constant-time comparison to prevent timing attacks
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(provided),
+            Encoding.UTF8.GetBytes(secret));
     }
 
     /// <summary>
