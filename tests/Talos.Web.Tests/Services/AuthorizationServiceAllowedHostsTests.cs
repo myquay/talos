@@ -286,7 +286,8 @@ public class AuthorizationServiceAllowedHostsTests : IDisposable
 
         // Assert
         result.Success.Should().BeFalse();
-        result.Error.Should().Be("access_denied");
+        result.Error.Should().Be("invalid_request",
+            "invalid profile URLs are now caught by IsValidProfileUrl before reaching the allowed-hosts check");
         // Should NOT have proceeded to profile discovery
         _mockProfileDiscovery.Verify(x => x.DiscoverProfileAsync(It.IsAny<string>()), Times.Never);
     }

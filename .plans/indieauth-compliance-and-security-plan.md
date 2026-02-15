@@ -173,10 +173,10 @@ Based on a code review of the Talos codebase, here are the key observations:
 | ID | Gap | Severity | Spec Ref |
 |----|-----|----------|----------|
 | GAP-1 | ~~**`iss` parameter missing from authorization response**~~ — **FIXED** ✅ `iss` parameter now included in redirect URL | ~~HIGH~~ | RESP-3, RESP-5 |
-| GAP-2 | **No client_id URL validation** on authorization request — `CreateAuthorizationAsync` does not call `UrlValidator.IsValidClientId()` | MEDIUM | ID-9, ID-10 |
+| GAP-2 | ~~**No client_id URL validation**~~ — **FIXED** ✅ `CreateAuthorizationAsync` now calls `UrlValidator.IsValidClientId()` before proceeding; `IsValidClientId` enhanced with dot-segment check; invalid client_id sets `RedirectUriUntrusted` flag | ~~MEDIUM~~ | ID-9, ID-10 |
 | GAP-3 | ~~**No redirect_uri validation**~~ — **FIXED** ✅ `redirect_uri` now validated in `CreateAuthorizationAsync`; dangerous schemes blocked; cross-origin rejected; controller no longer redirects errors to untrusted URIs | ~~HIGH~~ | DISC-9, AUTH-10, SEC-3 |
 | GAP-4 | **No client_id fetching/discovery** — server never fetches the `client_id` URL to discover client metadata or display app info to user | MEDIUM | DISC-5, AUTH-11, SEC-1, SEC-2 |
-| GAP-5 | **Profile URL validation incomplete** — `NormalizeProfileUrl` in `ProfileDiscoveryService` does not validate against all spec requirements (no port check, no IP check, no dot-segment check, no fragment check, no userinfo check) | MEDIUM | ID-2 through ID-8 |
+| GAP-5 | ~~**Profile URL validation incomplete**~~ — **FIXED** ✅ New `IsValidProfileUrl()` in `UrlValidator` checks all §3.2 requirements (scheme, path, dot-segments, fragment, userinfo, port, IP host); wired into `CreateAuthorizationAsync` | ~~MEDIUM~~ | ID-2 through ID-8 |
 | GAP-6 | ~~**No scope-gating on token issuance**~~ — **FIXED** ✅ Token endpoint now rejects codes with empty scope; returns `invalid_grant` error directing client to use auth endpoint | ~~HIGH~~ | REDEEM-5, AUTH-6 |
 | GAP-7 | ~~**Introspection endpoint has no authorization**~~ — **FIXED** ✅ `/token/introspect` now requires `Authorization: Bearer <secret>` with configurable `IntrospectionSecret`; constant-time comparison; fail-closed if unconfigured | ~~HIGH~~ | INTRO-2, INTRO-3 |
 | GAP-8 | **Metadata missing `authorization_response_iss_parameter_supported`** — should be `true` since `iss` is required | LOW | §4.1.1 |
@@ -241,21 +241,19 @@ Priority: **Must fix before any deployment**
 
 Priority: **Should fix before production use**
 
-- [ ] **2.1 — Add client_id URL validation** (GAP-2)
-  - Call `UrlValidator.IsValidClientId()` in `CreateAuthorizationAsync` before proceeding
-  - Write tests for: valid URLs, IPs (rejected), missing path, fragments (rejected)
+- [x] **2.1 — Add client_id URL validation** (GAP-2) ✅
+  - `UrlValidator.IsValidClientId()` now called in `CreateAuthorizationAsync` after null check and before redirect_uri validation
+  - `IsValidClientId()` enhanced with `HasDotSegments()` check per spec §3.3
+  - Invalid `client_id` returns `invalid_request` error with `RedirectUriUntrusted=true` (controller shows error page, does not redirect)
+  - ~12 expanded validator tests + 7 service-level integration tests added (204 total tests passing)
+  - See [gap-2-client-id-validation.md](gap-2-client-id-validation.md) for details
 
-- [ ] **2.2 — Strengthen Profile URL validation** (GAP-5)
-  - Create/enhance a `ValidateProfileUrl()` method with all spec checks:
-    - `https` or `http` scheme
-    - Contains path component
-    - No single-dot or double-dot path segments
-    - No fragment
-    - No username/password
-    - No port
-    - Host is domain name, not IP
-  - Apply validation in `CreateAuthorizationAsync` for the `me` parameter
-  - Write comprehensive unit tests against all example valid/invalid URLs from spec §3.2
+- [x] **2.2 — Strengthen Profile URL validation** (GAP-5) ✅
+  - New `UrlValidator.IsValidProfileUrl()` method validates all §3.2 requirements: https/http scheme, path present, no dot-segments, no fragment, no userinfo, no non-default port, no IP hosts (no loopback exception)
+  - Wired into `CreateAuthorizationAsync` after the `me` null check and before `IsProfileHostAllowed`
+  - `RedirectUriUntrusted` is NOT set for `me` errors (client_id and redirect_uri already validated by this point)
+  - 7 valid + 15 invalid validator tests + 9 service-level integration tests added; 1 existing test updated (235 total tests passing)
+  - See [gap-5-profile-url-validation.md](gap-5-profile-url-validation.md) for details
 
 - [ ] **2.3 — Implement client_id fetching** (GAP-4)
   - Create `IClientDiscoveryService` to fetch and parse client metadata from `client_id` URL
