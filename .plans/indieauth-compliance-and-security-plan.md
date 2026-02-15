@@ -267,10 +267,12 @@ Priority: **Should fix before production use**
   - 38 new tests added (14 ClientDiscoveryService, 5 UrlValidator, 8 MicroformatsServiceHApp, 11 AuthorizationServiceClientDiscovery); 273 total tests passing
   - See [gap-4-client-discovery.md](gap-4-client-discovery.md) for details
 
-- [ ] **2.4 — Make `me` parameter optional** (GAP-14)
-  - Remove the required check for `me` in `CreateAuthorizationAsync`
-  - When `me` is absent, show a URL entry form in the auth UI
-  - Write test: authorization request without `me` → valid (no error)
+- [x] **2.4 — Make `me` parameter optional** (GAP-14)
+  - `me` is now optional per IndieAuth spec §5.2 (AUTH-7). When absent, the server redirects to `/enter-profile` with original auth params + client display info. The frontend form collects the profile URL and replays the `/auth` request with `me` appended — no new API endpoints or session state needed.
+  - New `EnterProfileView.vue` with `ClientCard`, form input, and redirect-through logic
+  - `BuildEnterProfileRedirect` helper in `AuthorizationService` constructs the redirect URL
+  - 12 new tests (AuthorizationServiceOptionalMeTests); 285 total tests passing
+  - See [gap-14-optional-me.md](gap-14-optional-me.md) for details
 
 - [ ] **2.5 — Require client_id in refresh token grant** (GAP-13)
   - Change refresh token handler to require `client_id` (not just "if provided")
