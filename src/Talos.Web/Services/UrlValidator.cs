@@ -52,6 +52,55 @@ public static class UrlValidator
         if (string.IsNullOrEmpty(uri.AbsolutePath) || uri.AbsolutePath == "")
             return false;
 
+        // Must not contain dot-segments per IndieAuth spec §3.3
+        if (HasDotSegments(clientId!))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Validates a profile URL per IndieAuth specification §3.2.
+    /// Profile URLs have stricter requirements than client IDs:
+    /// no port allowed, no IP addresses (not even loopback).
+    /// </summary>
+    public static bool IsValidProfileUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        // ID-2: Must be https or http scheme
+        if (uri.Scheme != "https" && uri.Scheme != "http")
+            return false;
+
+        // ID-3: Must contain a path component (at least /)
+        if (string.IsNullOrEmpty(uri.AbsolutePath))
+            return false;
+
+        // ID-4: Must not contain dot-segments
+        if (HasDotSegments(url))
+            return false;
+
+        // ID-5: Must not contain a fragment
+        if (!string.IsNullOrEmpty(uri.Fragment))
+            return false;
+
+        // ID-6: Must not contain username or password
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+            return false;
+
+        // ID-7: Must not contain a port
+        if (!uri.IsDefaultPort)
+            return false;
+
+        // ID-8: Host must be a domain name, not an IP address (no loopback exception)
+        if (uri.HostNameType == UriHostNameType.IPv4 ||
+            uri.HostNameType == UriHostNameType.IPv6)
+            return false;
+
         return true;
     }
 

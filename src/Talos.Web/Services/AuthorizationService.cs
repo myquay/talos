@@ -33,6 +33,14 @@ public class AuthorizationService(
             return ErrorResult("invalid_request", "client_id is required");
         }
 
+        // Validate client_id URL per IndieAuth spec §3.3
+        if (!UrlValidator.IsValidClientId(request.ClientId))
+        {
+            return ErrorResult("invalid_request",
+                "client_id is not a valid URL per the IndieAuth specification",
+                redirectUriUntrusted: true);
+        }
+
         if (string.IsNullOrEmpty(request.RedirectUri))
         {
             return ErrorResult("invalid_request", "redirect_uri is required", redirectUriUntrusted: true);
@@ -62,10 +70,16 @@ public class AuthorizationService(
             return ErrorResult("invalid_request", "code_challenge_method must be S256");
         }
 
-        // Validate 'me' parameter (user's profile URL)
+        // Validate 'me' parameter (user's profile URL) per IndieAuth spec §3.2
         if (string.IsNullOrEmpty(request.Me))
         {
             return ErrorResult("invalid_request", "me (profile URL) is required");
+        }
+
+        if (!UrlValidator.IsValidProfileUrl(request.Me))
+        {
+            return ErrorResult("invalid_request",
+                "me is not a valid profile URL per the IndieAuth specification");
         }
 
         // Check if the profile host is allowed (personal server mode)
