@@ -177,7 +177,7 @@ Based on a code review of the Talos codebase, here are the key observations:
 | GAP-3 | ~~**No redirect_uri validation**~~ — **FIXED** ✅ `redirect_uri` now validated in `CreateAuthorizationAsync`; dangerous schemes blocked; cross-origin rejected; controller no longer redirects errors to untrusted URIs | ~~HIGH~~ | DISC-9, AUTH-10, SEC-3 |
 | GAP-4 | **No client_id fetching/discovery** — server never fetches the `client_id` URL to discover client metadata or display app info to user | MEDIUM | DISC-5, AUTH-11, SEC-1, SEC-2 |
 | GAP-5 | **Profile URL validation incomplete** — `NormalizeProfileUrl` in `ProfileDiscoveryService` does not validate against all spec requirements (no port check, no IP check, no dot-segment check, no fragment check, no userinfo check) | MEDIUM | ID-2 through ID-8 |
-| GAP-6 | **No scope-gating on token issuance** — Token endpoint issues access tokens even if auth code was issued with no scope (spec says MUST NOT) | HIGH | REDEEM-5, AUTH-6 |
+| GAP-6 | ~~**No scope-gating on token issuance**~~ — **FIXED** ✅ Token endpoint now rejects codes with empty scope; returns `invalid_grant` error directing client to use auth endpoint | ~~HIGH~~ | REDEEM-5, AUTH-6 |
 | GAP-7 | **Introspection endpoint has no authorization** — `/token/introspect` accepts any request with no authentication required (spec says MUST require auth) | HIGH | INTRO-2, INTRO-3 |
 | GAP-8 | **Metadata missing `authorization_response_iss_parameter_supported`** — should be `true` since `iss` is required | LOW | §4.1.1 |
 | GAP-9 | **No `indieauth-metadata` link relation** served from user profile pages — the `.well-known` endpoint exists but profile pages don't advertise it | MEDIUM | DISC-1 |
@@ -187,8 +187,8 @@ Based on a code review of the Talos codebase, here are the key observations:
 | GAP-13 | **Refresh token grant doesn't validate `client_id` is required** — spec says `client_id` is required in refresh request, but implementation only checks "if provided" | MEDIUM | REFRESH-2 |
 | GAP-14 | **`me` parameter treated as required** — spec says `me` is optional (SHOULD be provided, not MUST) | LOW | AUTH-7 |
 | GAP-15 | **No `iat` in introspection response** — spec lists it as optional but recommended | LOW | §6.2 |
-| GAP-16 | **`active` returned as string `"true"`/`"false"`** in introspection — spec requires boolean `true`/`false` | MEDIUM | INTRO-4 |
-| GAP-17 | **Default scope behavior** — `ParseScopes` adds `profile` scope when none given, but per spec, empty scope should mean no access token issued (only profile URL) | MEDIUM | AUTH-6 |
+| GAP-16 | ~~**`active` returned as string**~~ — **FIXED** ✅ Introspection now uses strongly-typed `IntrospectionResponse` with `[JsonPropertyName]` attributes; `active` guaranteed to be JSON boolean | ~~MEDIUM~~ | INTRO-4 |
+| GAP-17 | ~~**Default scope behavior**~~ — **FIXED** ✅ `ParseScopes` now returns empty list for null/empty scope; no default scope injected | ~~MEDIUM~~ | AUTH-6 |
 | GAP-18 | **Localhost `client_id` not blocked from fetching** — spec says MUST NOT fetch localhost `client_id` URLs | MEDIUM | DISC-6 |
 | GAP-19 | **No `revocation_endpoint_auth_methods_supported`** in metadata — spec says this SHOULD be `["none"]` if a revocation endpoint is provided | LOW | §4.1.1 |
 | GAP-20 | **`introspection_endpoint_auth_methods_supported`** missing from metadata | LOW | §4.1.1 |
@@ -215,11 +215,12 @@ Priority: **Must fix before any deployment**
   - Cross-origin redirect URIs rejected until GAP-4 (client metadata fetching) is implemented
   - See [gap-3-redirect-uri-validation.md](gap-3-redirect-uri-validation.md) for details
 
-- [ ] **1.3 — Enforce no-token-for-empty-scope** (GAP-6, GAP-17)
-  - Fix `ParseScopes` — do NOT add default `profile` scope when none is provided
-  - In token endpoint: if auth code has no scopes, return error instead of issuing token
-  - Auth endpoint (POST) should still return `me` for scope-less codes
-  - Write tests: token request with empty-scope code → error; auth endpoint POST with empty-scope code → `me` only
+- [x] **1.3 — Enforce no-token-for-empty-scope** (GAP-6, GAP-17) ✅
+  - `ParseScopes` fixed to return empty list for null/empty/whitespace scope — no default `profile` injected
+  - Token endpoint now rejects codes with no scopes: returns `invalid_grant` with message directing client to use auth endpoint
+  - Auth endpoint POST continues to return only `me` regardless of scope (correct behavior)
+  - 6 scope-parsing tests + 5 token endpoint scope-gating tests added (173 total tests passing)
+  - See [gap-6-17-scope-gating.md](gap-6-17-scope-gating.md) for details
 
 - [ ] **1.4 — Require authorization on introspection endpoint** (GAP-7)
   - Add Bearer token authentication to `/token/introspect`
@@ -227,9 +228,12 @@ Priority: **Must fix before any deployment**
   - Return HTTP 401 if missing/invalid authorization
   - Write tests: unauthenticated request → 401; authenticated request → normal response
 
-- [ ] **1.5 — Fix introspection `active` field type** (GAP-16)
-  - Ensure `active` is serialized as boolean `true`/`false`, not string `"true"`/`"false"`
-  - Write test: deserialize response and verify JSON type is boolean
+- [x] **1.5 — Fix introspection `active` field type** (GAP-16) ✅
+  - Replaced anonymous objects with strongly-typed `IntrospectionResponse` class using `[JsonPropertyName]` attributes
+  - `Active` is `bool` — guaranteed JSON boolean; property names guaranteed snake_case (`client_id`, not `clientId`)
+  - Inactive response serializes to `{"active":false}` only (null/default fields omitted via `[JsonIgnore]`)
+  - 6 serialization tests + 3 controller-level tests added (173 total tests passing)
+  - See [gap-16-introspection-active-field.md](gap-16-introspection-active-field.md) for details
 
 ### Phase 2: Important Compliance Improvements
 

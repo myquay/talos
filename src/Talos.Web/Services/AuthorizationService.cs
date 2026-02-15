@@ -297,7 +297,7 @@ public class AuthorizationService(
     private static List<string> ParseScopes(string? scope)
     {
         if (string.IsNullOrWhiteSpace(scope))
-            return new List<string> { "profile" };
+            return new List<string>();
 
         return scope.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
     }
