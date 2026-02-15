@@ -59,6 +59,51 @@ public class AuthController(
     }
 
     /// <summary>
+    /// IndieAuth Authorization Code Verification (profile-only, no access token)
+    /// Per spec: clients that do not need an access token exchange the code at the authorization endpoint.
+    /// https://indieauth.spec.indieweb.org/#authorization-code-verification
+    /// </summary>
+    [HttpPost]
+    [Consumes("application/x-www-form-urlencoded")]
+    public async Task<IActionResult> VerifyAuthorizationCode(
+        [FromForm(Name = "grant_type")] string grantType,
+        [FromForm(Name = "code")] string? code,
+        [FromForm(Name = "client_id")] string? clientId,
+        [FromForm(Name = "redirect_uri")] string? redirectUri,
+        [FromForm(Name = "code_verifier")] string? codeVerifier)
+    {
+        if (grantType != "authorization_code")
+        {
+            return BadRequest(new { error = "unsupported_grant_type" });
+        }
+
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(clientId) ||
+            string.IsNullOrEmpty(redirectUri) || string.IsNullOrEmpty(codeVerifier))
+        {
+            return BadRequest(new
+            {
+                error = "invalid_request",
+                error_description = "code, client_id, redirect_uri, and code_verifier are required"
+            });
+        }
+
+        var authCode = await authorizationService.ValidateAuthorizationCodeAsync(
+            code, clientId, redirectUri, codeVerifier);
+
+        if (authCode == null)
+        {
+            return BadRequest(new
+            {
+                error = "invalid_grant",
+                error_description = "Invalid, expired, or already used authorization code"
+            });
+        }
+
+        // Per IndieAuth spec, the authorization endpoint returns only the profile URL (no tokens)
+        return Ok(new { me = authCode.ProfileUrl });
+    }
+
+    /// <summary>
     /// Get discovered providers for a session
     /// </summary>
     [HttpGet]
