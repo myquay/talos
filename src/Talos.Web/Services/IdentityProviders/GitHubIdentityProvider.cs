@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Talos.Web.Configuration;
@@ -74,7 +75,7 @@ public class GitHubIdentityProvider : IIdentityProvider
 
         try
         {
-            using var client = new HttpClient();
+            var client = _httpClientFactory.CreateClient("GitHub");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             var content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -196,21 +197,43 @@ public class GitHubIdentityProvider : IIdentityProvider
 
     private class GitHubTokenResponse
     {
+        [JsonPropertyName("access_token")]
         public string? AccessToken { get; set; }
+
+        [JsonPropertyName("token_type")]
         public string? TokenType { get; set; }
+
+        [JsonPropertyName("scope")]
         public string? Scope { get; set; }
+
+        [JsonPropertyName("error")]
         public string? Error { get; set; }
+
+        [JsonPropertyName("error_description")]
         public string? ErrorDescription { get; set; }
     }
 
     private class GitHubUserInfo
     {
+        [JsonPropertyName("id")]
         public long? Id { get; set; }
+
+        [JsonPropertyName("login")]
         public string? Login { get; set; }
+
+        [JsonPropertyName("name")]
         public string? Name { get; set; }
+
+        [JsonPropertyName("email")]
         public string? Email { get; set; }
+
+        [JsonPropertyName("html_url")]
         public string? HtmlUrl { get; set; }
+
+        [JsonPropertyName("blog")]
         public string? Blog { get; set; }
+
+        [JsonPropertyName("bio")]
         public string? Bio { get; set; }
     }
 }
