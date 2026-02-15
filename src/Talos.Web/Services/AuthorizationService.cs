@@ -225,7 +225,8 @@ public class AuthorizationService(
 
         await dbContext.SaveChangesAsync();
 
-        var redirectUrl = $"{pending.RedirectUri}?code={Uri.EscapeDataString(code)}&state={Uri.EscapeDataString(pending.State)}";
+        var issuer = talosSettings.Value.BaseUrl.TrimEnd('/');
+        var redirectUrl = $"{pending.RedirectUri}?code={Uri.EscapeDataString(code)}&state={Uri.EscapeDataString(pending.State)}&iss={Uri.EscapeDataString(issuer)}";
 
         return new AuthorizationCodeResult
         {
