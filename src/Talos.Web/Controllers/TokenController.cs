@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -94,6 +95,17 @@ public class TokenController(
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Invalid, expired, or already used authorization code"
+            });
+        }
+
+        // Per IndieAuth §5.3.3 — codes with no scope cannot be exchanged for an access token.
+        // The client should exchange scope-less codes at the authorization endpoint instead.
+        if (authCode.Scopes == null || authCode.Scopes.Count == 0)
+        {
+            return BadRequest(new TokenErrorResponse
+            {
+                Error = "invalid_grant",
+                ErrorDescription = "This authorization code was issued with no scope and cannot be exchanged for an access token. Use the authorization endpoint instead."
             });
         }
 
@@ -207,23 +219,23 @@ public class TokenController(
     {
         if (string.IsNullOrEmpty(token))
         {
-            return Ok(new { active = false });
+            return Ok(new IntrospectionResponse { Active = false });
         }
 
         var result = await tokenService.ValidateAccessTokenAsync(token);
         
         if (!result.IsValid)
         {
-            return Ok(new { active = false });
+            return Ok(new IntrospectionResponse { Active = false });
         }
 
-        return Ok(new
+        return Ok(new IntrospectionResponse
         {
-            active = true,
-            me = result.ProfileUrl,
-            client_id = result.ClientId,
-            scope = string.Join(" ", result.Scopes),
-            exp = new DateTimeOffset(result.ExpiresAt!.Value).ToUnixTimeSeconds()
+            Active = true,
+            Me = result.ProfileUrl,
+            ClientId = result.ClientId,
+            Scope = string.Join(" ", result.Scopes),
+            Exp = new DateTimeOffset(result.ExpiresAt!.Value).ToUnixTimeSeconds()
         });
     }
 
@@ -291,6 +303,37 @@ public class TokenErrorResponse
 {
     public string Error { get; set; } = "";
     public string? ErrorDescription { get; set; }
+}
+
+/// <summary>
+/// Token introspection response per RFC 7662 §2.2 and IndieAuth §6.2.
+/// Uses explicit [JsonPropertyName] attributes to guarantee correct wire format
+/// regardless of any PropertyNamingPolicy configured on the application.
+/// </summary>
+public class IntrospectionResponse
+{
+    /// <summary>
+    /// Boolean indicator of whether or not the presented token is currently active.
+    /// MUST be a JSON boolean — never a string.
+    /// </summary>
+    [JsonPropertyName("active")]
+    public bool Active { get; set; }
+
+    [JsonPropertyName("me")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Me { get; set; }
+
+    [JsonPropertyName("client_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ClientId { get; set; }
+
+    [JsonPropertyName("scope")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Scope { get; set; }
+
+    [JsonPropertyName("exp")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long Exp { get; set; }
 }
 
 
