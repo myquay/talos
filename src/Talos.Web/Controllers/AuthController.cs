@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Talos.Web.Configuration;
 using Talos.Web.Models;
 using Talos.Web.Services;
+using Talos.Web.Telemetry;
 
 namespace Talos.Web.Controllers;
 
@@ -12,7 +13,8 @@ namespace Talos.Web.Controllers;
 [EnableRateLimiting("auth")]
 public class AuthController(
     IAuthorizationService authorizationService,
-    IOptions<TalosSettings> talosSettings)
+    IOptions<TalosSettings> talosSettings,
+    IAuthTelemetry telemetry)
     : ControllerBase
 {
     /// <summary>
@@ -45,6 +47,8 @@ public class AuthController(
 
         if (!result.Success)
         {
+            telemetry.TrackAuthorizationDenied(clientId, result.Error ?? "unknown");
+
             // If redirect_uri is untrusted (invalid/malicious), never redirect to it — show error page directly
             if (!result.RedirectUriUntrusted && !string.IsNullOrEmpty(redirectUri) && Uri.TryCreate(redirectUri, UriKind.Absolute, out _))
             {
@@ -55,6 +59,7 @@ public class AuthController(
             return Redirect($"/error?error={result.Error}&error_description={Uri.EscapeDataString(result.ErrorDescription ?? "")}");
         }
 
+        telemetry.TrackAuthorizationStarted(clientId, scope, responseType);
         return Redirect(result.RedirectUrl!);
     }
 

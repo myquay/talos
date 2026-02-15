@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Talos.Web.Telemetry;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -53,7 +55,8 @@ public class TokenControllerIntrospectionAuthTests : IDisposable
             _mockAuthService.Object,
             _mockTokenService.Object,
             _dbContext,
-            mockSettings.Object);
+            mockSettings.Object,
+            new NullAuthTelemetry());
 
         // Set up HttpContext so Request.Headers is available
         var httpContext = new DefaultHttpContext();
