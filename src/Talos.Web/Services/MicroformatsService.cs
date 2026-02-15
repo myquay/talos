@@ -1,4 +1,5 @@
 using Microformats;
+using Microformats.Definitions;
 
 namespace Talos.Web.Services;
 
@@ -38,6 +39,24 @@ public class MicroformatsService(ILogger<MicroformatsService> logger) : IMicrofo
             result.IndieAuthMetadata = GetFirstResolvedUrl(parsed.Rels, "indieauth-metadata", baseUrl);
             result.Micropub = GetFirstResolvedUrl(parsed.Rels, "micropub", baseUrl);
             result.Microsub = GetFirstResolvedUrl(parsed.Rels, "microsub", baseUrl);
+
+            // Extract h-app client info (IndieAuth §4.2.2)
+            var hApp = parsed.Items
+                .FirstOrDefault(i => i.Type != null && i.Type.Contains("h-app"));
+            if (hApp != null)
+            {
+                var names = hApp.Get(Constants.Props.NAME);
+                if (names.Length > 0)
+                    result.AppName = names[0];
+
+                var logos = hApp.Get(Constants.Props.LOGO);
+                if (logos.Length > 0)
+                    result.AppLogoUrl = ResolveUrl(logos[0], baseUrl);
+
+                var urls = hApp.Get(Constants.Props.URL);
+                if (urls.Length > 0)
+                    result.AppUrl = ResolveUrl(urls[0], baseUrl);
+            }
         }
         catch (Exception ex)
         {

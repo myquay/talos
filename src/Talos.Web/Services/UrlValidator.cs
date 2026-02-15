@@ -188,6 +188,16 @@ public static class UrlValidator
     }
 
     /// <summary>
+    /// Validates a cross-origin redirect_uri against a list of published redirect URIs
+    /// from the client's metadata document. Exact string match per DISC-9.
+    /// </summary>
+    public static bool IsRedirectUriInPublishedList(string redirectUri, IReadOnlyList<string> publishedRedirectUris)
+    {
+        return publishedRedirectUris.Any(published =>
+            string.Equals(redirectUri, published, StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// Normalizes a profile URL per IndieAuth specification
     /// </summary>
     public static string NormalizeProfileUrl(string url)

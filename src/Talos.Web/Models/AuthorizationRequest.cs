@@ -27,6 +27,8 @@ public class PendingAuthentication
     public string? ProviderState { get; set; }
     public bool IsAuthenticated { get; set; }
     public bool IsConsentGiven { get; set; }
+    public string? ClientName { get; set; }
+    public string? ClientLogoUri { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
 }
