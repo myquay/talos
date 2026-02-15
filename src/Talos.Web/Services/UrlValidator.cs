@@ -56,18 +56,31 @@ public static class UrlValidator
     }
 
     /// <summary>
-    /// Validates a redirect_uri matches the client_id per IndieAuth specification
+    /// Validates a redirect_uri matches the client_id per IndieAuth specification.
+    /// Returns true only for same-origin redirect URIs. Cross-origin redirect URIs
+    /// require client metadata verification (not yet implemented — see GAP-4).
     /// </summary>
     public static bool IsValidRedirectUri(string? redirectUri, string? clientId)
     {
+        if (string.IsNullOrWhiteSpace(redirectUri))
+            return false;
+
+        // Block dangerous schemes before any further parsing
+        if (HasDangerousScheme(redirectUri))
+            return false;
+
         if (!IsValidHttpsUrl(redirectUri) || !IsValidClientId(clientId))
             return false;
 
         var redirectUriParsed = new Uri(redirectUri!);
         var clientIdParsed = new Uri(clientId!);
 
+        // Reject dot-segments in path (path traversal) — check raw string, not parsed Uri
+        if (HasDotSegments(redirectUri!))
+            return false;
+
         // Redirect URI must be on the same host as client_id
-        // or be a prefix path match
+        // Cross-origin redirect URIs are rejected until client metadata fetching is implemented (GAP-4)
         if (!string.Equals(redirectUriParsed.Host, clientIdParsed.Host, StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -80,6 +93,49 @@ public static class UrlValidator
             return false;
 
         return true;
+    }
+
+    /// <summary>
+    /// Checks whether a URL string starts with a dangerous scheme (javascript:, data:, etc.)
+    /// This check is performed before URI parsing to catch schemes that Uri.TryCreate may accept.
+    /// </summary>
+    public static bool HasDangerousScheme(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        var trimmed = url.TrimStart();
+        return trimmed.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("vbscript:", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("file:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Checks whether a URL string contains single-dot or double-dot path segments
+    /// which are not allowed per IndieAuth spec §3.3.
+    /// Must operate on the raw string because <see cref="Uri"/> normalises dot segments automatically.
+    /// </summary>
+    public static bool HasDotSegments(string url)
+    {
+        // Extract the path portion (after scheme+authority, before query/fragment)
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        var raw = uri.OriginalString;
+
+        // Find the path start: skip past scheme://authority
+        var authorityEnd = raw.IndexOf("//", StringComparison.Ordinal);
+        if (authorityEnd < 0) return false;
+        var pathStart = raw.IndexOf('/', authorityEnd + 2);
+        if (pathStart < 0) return false;
+
+        // Trim query and fragment
+        var pathEnd = raw.IndexOfAny(['?', '#'], pathStart);
+        var path = pathEnd < 0 ? raw[pathStart..] : raw[pathStart..pathEnd];
+
+        var segments = path.Split('/');
+        return segments.Any(s => s is "." or "..");
     }
 
     /// <summary>

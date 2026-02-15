@@ -1,8 +1,9 @@
 # Fix Plan: GAP-3 — Add `redirect_uri` validation to authorization request
 
-**Status:** Not Started
+**Status:** ✅ Complete
 **Spec requirement:** DISC-9, AUTH-10, SEC-3 (§4.2.2, §5.2, §10.1)
 **Severity:** P0 — Critical
+**Completed:** All production code and tests implemented. 153/153 tests passing.
 
 ---
 

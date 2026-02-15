@@ -174,7 +174,7 @@ Based on a code review of the Talos codebase, here are the key observations:
 |----|-----|----------|----------|
 | GAP-1 | ~~**`iss` parameter missing from authorization response**~~ — **FIXED** ✅ `iss` parameter now included in redirect URL | ~~HIGH~~ | RESP-3, RESP-5 |
 | GAP-2 | **No client_id URL validation** on authorization request — `CreateAuthorizationAsync` does not call `UrlValidator.IsValidClientId()` | MEDIUM | ID-9, ID-10 |
-| GAP-3 | **No redirect_uri validation** on authorization request — `CreateAuthorizationAsync` does not call `UrlValidator.IsValidRedirectUri()` or verify against client's published redirects | HIGH | DISC-9, AUTH-10, SEC-3 |
+| GAP-3 | ~~**No redirect_uri validation**~~ — **FIXED** ✅ `redirect_uri` now validated in `CreateAuthorizationAsync`; dangerous schemes blocked; cross-origin rejected; controller no longer redirects errors to untrusted URIs | ~~HIGH~~ | DISC-9, AUTH-10, SEC-3 |
 | GAP-4 | **No client_id fetching/discovery** — server never fetches the `client_id` URL to discover client metadata or display app info to user | MEDIUM | DISC-5, AUTH-11, SEC-1, SEC-2 |
 | GAP-5 | **Profile URL validation incomplete** — `NormalizeProfileUrl` in `ProfileDiscoveryService` does not validate against all spec requirements (no port check, no IP check, no dot-segment check, no fragment check, no userinfo check) | MEDIUM | ID-2 through ID-8 |
 | GAP-6 | **No scope-gating on token issuance** — Token endpoint issues access tokens even if auth code was issued with no scope (spec says MUST NOT) | HIGH | REDEEM-5, AUTH-6 |
@@ -207,10 +207,13 @@ Priority: **Must fix before any deployment**
   - 4 tests added in `AuthorizationServiceIssParameterTests.cs` — all passing
   - See [gap-1-iss-parameter.md](gap-1-iss-parameter.md) for details
 
-- [ ] **1.2 — Add redirect_uri validation** (GAP-3)
-  - In `AuthorizationService.CreateAuthorizationAsync`, validate `redirect_uri` using `UrlValidator.IsValidRedirectUri()`
-  - If scheme/host/port of `redirect_uri` differ from `client_id`, fetch `client_id` and verify against published `redirect_uri`s
-  - Write tests for: matching host, different host (blocked), custom scheme (blocked without registration)
+- [x] **1.2 — Add redirect_uri validation** (GAP-3) ✅
+  - `UrlValidator.IsValidRedirectUri()` now called in `CreateAuthorizationAsync` — blocks dangerous schemes, non-HTTPS, cross-origin, fragments, userinfo, and dot-segments
+  - `HasDotSegments()` operates on raw string to avoid .NET Uri normalization
+  - `AuthorizationResult.RedirectUriUntrusted` flag prevents controller from redirecting errors to an untrusted URI
+  - ~22 UrlValidator tests + 7 service-level integration tests added (153 total tests passing)
+  - Cross-origin redirect URIs rejected until GAP-4 (client metadata fetching) is implemented
+  - See [gap-3-redirect-uri-validation.md](gap-3-redirect-uri-validation.md) for details
 
 - [ ] **1.3 — Enforce no-token-for-empty-scope** (GAP-6, GAP-17)
   - Fix `ParseScopes` — do NOT add default `profile` scope when none is provided
