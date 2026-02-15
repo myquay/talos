@@ -279,17 +279,16 @@ Priority: **Should fix before production use**
   - Added required check before token lookup; changed "if provided" mismatch check to unconditional
   - 7 new tests (TokenControllerRefreshTokenTests); 292 total tests passing
 
-- [ ] **2.6 — Add SSRF protection** (GAP-12)
-  - Before fetching `client_id` or any user-provided URL:
-    - Resolve hostname to IP
-    - Block private ranges (10.x, 172.16-31.x, 192.168.x, 127.x, ::1, link-local)
-    - Block cloud metadata endpoints (169.254.169.254)
-  - Apply to `ProfileDiscoveryService` and future `ClientDiscoveryService`
-  - Write tests with mocked DNS resolution
+- [x] **2.6 — Add SSRF protection** (GAP-12)
+  - Created `SsrfProtection` static class with `IsPrivateOrReservedAddress(IPAddress)` covering all RFC 1918 private ranges, loopback (127.0.0.0/8, ::1), link-local (169.254.0.0/16, fe80::/10), cloud metadata (169.254.169.254), carrier-grade NAT (100.64.0.0/10), unique local IPv6 (fc00::/7), multicast, documentation/test ranges, and IPv4-mapped IPv6 addresses
+  - Created `SsrfProtection.CreateSsrfSafeHandler()` which returns a `SocketsHttpHandler` with a `ConnectCallback` that resolves DNS and blocks connections to private/reserved IPs at the transport level — preventing TOCTOU races and catching redirects
+  - Wired into both `ProfileDiscovery` and `ClientDiscovery` HTTP clients in `Program.cs` via `ConfigurePrimaryHttpMessageHandler`
+  - 49 new tests (SsrfProtectionTests) covering IPv4 private/loopback/link-local/CGN/multicast/reserved, IPv6 loopback/link-local/ULA/multicast, IPv4-mapped IPv6, boundary values, and public address allow-list; 341 total tests passing
 
-- [ ] **2.7 — Don't fetch localhost client_id** (GAP-18)
-  - If `client_id` resolves to localhost/127.0.0.1/[::1], skip fetching
-  - Write test: localhost `client_id` → no HTTP request made
+- [x] **2.7 — Don't fetch localhost client_id** (GAP-18)
+  - Already implemented: `ClientDiscoveryService.IsLoopback()` checks URL hostname for localhost/127.0.0.1/[::1] before fetching
+  - Already tested: `DiscoverClientAsync_LoopbackClientId_DoesNotFetch` theory test with 4 inline data cases (localhost, localhost:8080, 127.0.0.1, [::1])
+  - Now also protected at transport level by the SSRF-safe `SocketsHttpHandler` (belt-and-suspenders)
 
 ### Phase 3: Metadata & Optional Features
 
