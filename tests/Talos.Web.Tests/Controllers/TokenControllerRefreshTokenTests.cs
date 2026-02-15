@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Talos.Web.Telemetry;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -64,7 +66,8 @@ public class TokenControllerRefreshTokenTests : IDisposable
             _mockAuthService.Object,
             _mockTokenService.Object,
             _dbContext,
-            mockSettings.Object);
+            mockSettings.Object,
+            new NullAuthTelemetry());
     }
 
     private void SeedValidRefreshToken(string clientId = ValidClientId)

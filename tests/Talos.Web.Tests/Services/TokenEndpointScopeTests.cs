@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Talos.Web.Telemetry;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -56,7 +58,8 @@ public class TokenEndpointScopeTests : IDisposable
             _mockAuthService.Object,
             _mockTokenService.Object,
             _dbContext,
-            mockSettings.Object);
+            mockSettings.Object,
+            new NullAuthTelemetry());
     }
 
     private void SetupAuthCodeValidation(AuthorizationCode authCode)
@@ -185,7 +188,7 @@ public class TokenEndpointScopeTests : IDisposable
         var talosOptions = new Mock<IOptions<TalosSettings>>();
         talosOptions.Setup(x => x.Value).Returns(new TalosSettings { BaseUrl = "https://talos.example.com" });
 
-        var authController = new AuthController(_mockAuthService.Object, talosOptions.Object);
+        var authController = new AuthController(_mockAuthService.Object, talosOptions.Object, new NullAuthTelemetry());
         var result = await authController.VerifyAuthorizationCode(
             "authorization_code", "test-code", "https://app.example.com/",
             "https://app.example.com/callback", "verifier");
@@ -213,7 +216,7 @@ public class TokenEndpointScopeTests : IDisposable
         var talosOptions = new Mock<IOptions<TalosSettings>>();
         talosOptions.Setup(x => x.Value).Returns(new TalosSettings { BaseUrl = "https://talos.example.com" });
 
-        var authController = new AuthController(_mockAuthService.Object, talosOptions.Object);
+        var authController = new AuthController(_mockAuthService.Object, talosOptions.Object, new NullAuthTelemetry());
         var result = await authController.VerifyAuthorizationCode(
             "authorization_code", "test-code", "https://app.example.com/",
             "https://app.example.com/callback", "verifier");

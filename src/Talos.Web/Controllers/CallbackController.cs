@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Talos.Web.Configuration;
 using Talos.Web.Services;
 using Talos.Web.Services.IdentityProviders;
+using Talos.Web.Telemetry;
 
 namespace Talos.Web.Controllers;
 
@@ -12,7 +13,8 @@ public class CallbackController(
     IAuthorizationService authorizationService,
     IIdentityProviderFactory providerFactory,
     IOptions<TalosSettings> talosSettings,
-    ILogger<CallbackController> logger)
+    ILogger<CallbackController> logger,
+    IAuthTelemetry telemetry)
     : ControllerBase
 {
 
@@ -87,6 +89,8 @@ public class CallbackController(
         // Update pending authentication
         pending.IsAuthenticated = true;
         await authorizationService.UpdatePendingAuthenticationAsync(pending);
+
+        telemetry.TrackAuthorizationCompleted(pending.ClientId, "github");
 
         // Redirect to consent page
         return Redirect($"/consent?session_id={pending.SessionId}");

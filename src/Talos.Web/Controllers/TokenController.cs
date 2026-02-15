@@ -9,6 +9,7 @@ using Talos.Web.Configuration;
 using Talos.Web.Data;
 using Talos.Web.Data.Entities;
 using Talos.Web.Services;
+using Talos.Web.Telemetry;
 
 namespace Talos.Web.Controllers;
 
@@ -19,7 +20,8 @@ public class TokenController(
     IAuthorizationService authorizationService,
     ITokenService tokenService,
     TalosDbContext dbContext,
-    IOptions<IndieAuthSettings> settings)
+    IOptions<IndieAuthSettings> settings,
+    IAuthTelemetry telemetry)
     : ControllerBase
 {
     /// <summary>
@@ -131,6 +133,8 @@ public class TokenController(
         });
         await dbContext.SaveChangesAsync();
 
+        telemetry.TrackTokenIssued("authorization_code", string.Join(" ", authCode.Scopes));
+
         return Ok(new TokenResponse
         {
             AccessToken = accessToken,
@@ -211,6 +215,8 @@ public class TokenController(
             storedToken.ClientId,
             scopes);
 
+        telemetry.TrackTokenRefreshed(storedToken.ClientId);
+
         return Ok(new TokenResponse
         {
             AccessToken = accessToken,
@@ -244,8 +250,11 @@ public class TokenController(
         
         if (!result.IsValid)
         {
+            telemetry.TrackTokenIntrospected(false);
             return Ok(new IntrospectionResponse { Active = false });
         }
+
+        telemetry.TrackTokenIntrospected(true);
 
         return Ok(new IntrospectionResponse
         {
@@ -309,6 +318,8 @@ public class TokenController(
             refreshToken.IsRevoked = true;
             await dbContext.SaveChangesAsync();
         }
+
+        telemetry.TrackTokenRevoked(refreshToken != null);
 
         // Note: Access tokens are JWTs and can't be revoked directly
         // They will simply expire. For stricter revocation, use token introspection
