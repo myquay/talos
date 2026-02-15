@@ -35,7 +35,15 @@ public class AuthorizationService(
 
         if (string.IsNullOrEmpty(request.RedirectUri))
         {
-            return ErrorResult("invalid_request", "redirect_uri is required");
+            return ErrorResult("invalid_request", "redirect_uri is required", redirectUriUntrusted: true);
+        }
+
+        // Validate redirect_uri per IndieAuth spec §4.2.2, §5.2, §10.1
+        if (!UrlValidator.IsValidRedirectUri(request.RedirectUri, request.ClientId))
+        {
+            return ErrorResult("invalid_request",
+                "redirect_uri is not valid or does not match client_id",
+                redirectUriUntrusted: true);
         }
 
         if (string.IsNullOrEmpty(request.State))
@@ -310,13 +318,14 @@ public class AuthorizationService(
         return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
     }
 
-    private static AuthorizationResult ErrorResult(string error, string description)
+    private static AuthorizationResult ErrorResult(string error, string description, bool redirectUriUntrusted = false)
     {
         return new AuthorizationResult
         {
             Success = false,
             Error = error,
-            ErrorDescription = description
+            ErrorDescription = description,
+            RedirectUriUntrusted = redirectUriUntrusted
         };
     }
 

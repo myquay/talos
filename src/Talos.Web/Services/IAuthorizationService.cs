@@ -18,6 +18,12 @@ public class AuthorizationResult
     public string? Error { get; set; }
     public string? ErrorDescription { get; set; }
     public string? RedirectUrl { get; set; }
+    
+    /// <summary>
+    /// When true, the redirect_uri itself is invalid/untrusted and errors MUST NOT
+    /// be redirected to it. The controller should show an error page directly.
+    /// </summary>
+    public bool RedirectUriUntrusted { get; set; }
 }
 
 public class AuthorizationCodeResult

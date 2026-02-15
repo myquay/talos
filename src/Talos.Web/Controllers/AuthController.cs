@@ -45,8 +45,8 @@ public class AuthController(
 
         if (!result.Success)
         {
-            // Redirect back to client with error
-            if (!string.IsNullOrEmpty(redirectUri) && Uri.TryCreate(redirectUri, UriKind.Absolute, out _))
+            // If redirect_uri is untrusted (invalid/malicious), never redirect to it — show error page directly
+            if (!result.RedirectUriUntrusted && !string.IsNullOrEmpty(redirectUri) && Uri.TryCreate(redirectUri, UriKind.Absolute, out _))
             {
                 var errorRedirect = $"{redirectUri}?error={result.Error}&error_description={Uri.EscapeDataString(result.ErrorDescription ?? "")}&state={Uri.EscapeDataString(state ?? "")}";
                 return Redirect(errorRedirect);
