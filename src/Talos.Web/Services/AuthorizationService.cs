@@ -92,10 +92,14 @@ public class AuthorizationService(
             return ErrorResult("invalid_request", "code_challenge_method must be S256");
         }
 
-        // Validate 'me' parameter (user's profile URL) per IndieAuth spec §3.2
+        // me parameter is optional per IndieAuth spec §5.2 (AUTH-7 / GAP-14)
+        // When absent, redirect to a profile URL entry form. When the user submits,
+        // the form replays the original /auth request with me appended.
         if (string.IsNullOrEmpty(request.Me))
         {
-            return ErrorResult("invalid_request", "me (profile URL) is required");
+            clientInfo ??= await clientDiscovery.DiscoverClientAsync(request.ClientId);
+            var enterProfileUrl = BuildEnterProfileRedirect(request, clientInfo);
+            return new AuthorizationResult { Success = true, RedirectUrl = enterProfileUrl };
         }
 
         if (!UrlValidator.IsValidProfileUrl(request.Me))
@@ -393,6 +397,33 @@ public class AuthorizationService(
         // Case-insensitive exact match against allowed hosts
         return allowedHosts.Any(allowedHost => 
             string.Equals(host, allowedHost, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Builds a redirect URL to the enter-profile frontend form, carrying the original
+    /// authorization parameters and client display info so the form can replay the
+    /// request with me appended (GAP-14).
+    /// </summary>
+    private static string BuildEnterProfileRedirect(AuthorizationRequest request, ClientInfo clientInfo)
+    {
+        var query = new Dictionary<string, string?>
+        {
+            ["response_type"] = request.ResponseType,
+            ["client_id"] = request.ClientId,
+            ["redirect_uri"] = request.RedirectUri,
+            ["state"] = request.State,
+            ["code_challenge"] = request.CodeChallenge,
+            ["code_challenge_method"] = request.CodeChallengeMethod,
+            ["scope"] = request.Scope,
+            ["client_name"] = clientInfo.ClientName,
+            ["client_logo"] = clientInfo.LogoUri,
+        };
+
+        var queryString = string.Join("&", query
+            .Where(kv => kv.Value is not null)
+            .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value!)}"));
+
+        return $"/enter-profile?{queryString}";
     }
 }
 
