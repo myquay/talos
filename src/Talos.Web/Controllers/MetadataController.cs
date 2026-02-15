@@ -28,7 +28,8 @@ public class MetadataController(IOptions<TalosSettings> talosSettings) : Control
             grant_types_supported = new[] { "authorization_code", "refresh_token" },
             response_types_supported = new[] { "code" },
             scopes_supported = new[] { "profile", "email", "create", "update", "delete", "media" },
-            service_documentation = "https://indieauth.spec.indieweb.org/"
+            service_documentation = "https://indieauth.spec.indieweb.org/",
+            introspection_endpoint_auth_methods_supported = new[] { "Bearer" }
         });
     }
 

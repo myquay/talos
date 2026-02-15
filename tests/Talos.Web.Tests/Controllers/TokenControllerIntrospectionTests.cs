@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,8 @@ namespace Talos.Web.Tests.Controllers;
 /// </summary>
 public class TokenControllerIntrospectionTests : IDisposable
 {
+    private const string TestSecret = "test-introspection-secret";
+
     private readonly Mock<IAuthorizationService> _mockAuthService;
     private readonly Mock<ITokenService> _mockTokenService;
     private readonly TalosDbContext _dbContext;
@@ -43,14 +46,25 @@ public class TokenControllerIntrospectionTests : IDisposable
         mockSettings.Setup(x => x.Value).Returns(new IndieAuthSettings
         {
             AuthorizationCodeExpirationMinutes = 10,
-            RefreshTokenExpirationDays = 30
+            RefreshTokenExpirationDays = 30,
+            IntrospectionSecret = TestSecret
         });
 
-        return new TokenController(
+        var controller = new TokenController(
             _mockAuthService.Object,
             _mockTokenService.Object,
             _dbContext,
             mockSettings.Object);
+
+        // Set up HttpContext with valid introspection auth
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Authorization = $"Bearer {TestSecret}";
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContext
+        };
+
+        return controller;
     }
 
     [Fact]
