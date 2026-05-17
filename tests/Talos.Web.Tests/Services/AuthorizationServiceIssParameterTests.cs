@@ -104,6 +104,15 @@ public class AuthorizationServiceIssParameterTests : IDisposable
         return sessionId;
     }
 
+    private async Task<string> SeedCompletedPendingAuthenticationWithRedirectUri(string redirectUri)
+    {
+        var sessionId = await SeedCompletedPendingAuthentication();
+        var entity = await _dbContext.PendingAuthentications.FirstAsync(p => p.SessionId == sessionId);
+        entity.RedirectUri = redirectUri;
+        await _dbContext.SaveChangesAsync();
+        return sessionId;
+    }
+
     [Fact]
     public async Task CreateAuthorizationCodeAsync_RedirectUrl_ContainsIssParameter()
     {
@@ -176,5 +185,22 @@ public class AuthorizationServiceIssParameterTests : IDisposable
         query["code"].Should().NotBeNullOrEmpty("code is required per IndieAuth spec §5.2.1");
         query["state"].Should().Be("test-state-123", "state must match the original request value");
         query["iss"].Should().NotBeNullOrEmpty("iss is required per IndieAuth spec §5.2.1 / RFC 9207");
+    }
+
+    [Fact]
+    public async Task CreateAuthorizationCodeAsync_RedirectUriWithExistingQuery_AppendsParameters()
+    {
+        var sessionId = await SeedCompletedPendingAuthenticationWithRedirectUri("https://app.example.com/callback?existing=1");
+        var sut = CreateService();
+
+        var result = await sut.CreateAuthorizationCodeAsync(sessionId);
+
+        result.Success.Should().BeTrue();
+        var uri = new Uri(result.RedirectUrl!);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        query["existing"].Should().Be("1");
+        query["code"].Should().NotBeNullOrEmpty();
+        query["state"].Should().Be("test-state-123");
+        query["iss"].Should().Be("https://talos.example.com");
     }
 }

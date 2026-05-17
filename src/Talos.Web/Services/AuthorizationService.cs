@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.WebUtilities;
 using Talos.Web.Configuration;
 using Talos.Web.Data;
 using Talos.Web.Models;
@@ -132,7 +133,13 @@ public class AuthorizationService(
 
         // Create pending authentication session
         var sessionId = GenerateSessionId();
-        var scopes = ParseScopes(request.Scope);
+        var scopeResult = ParseAndValidateScopes(request.Scope, settings.Value.AllowedScopes);
+        if (!scopeResult.Success)
+        {
+            return ErrorResult("invalid_scope", scopeResult.ErrorDescription ?? "Invalid scope");
+        }
+
+        var scopes = scopeResult.Scopes;
 
         var pending = new Data.Entities.PendingAuthenticationEntity
         {
@@ -281,7 +288,12 @@ public class AuthorizationService(
         await dbContext.SaveChangesAsync();
 
         var issuer = talosSettings.Value.BaseUrl.TrimEnd('/');
-        var redirectUrl = $"{pending.RedirectUri}?code={Uri.EscapeDataString(code)}&state={Uri.EscapeDataString(pending.State)}&iss={Uri.EscapeDataString(issuer)}";
+        var redirectUrl = QueryHelpers.AddQueryString(pending.RedirectUri, new Dictionary<string, string?>
+        {
+            ["code"] = code,
+            ["state"] = pending.State,
+            ["iss"] = issuer
+        });
 
         return new AuthorizationCodeResult
         {
@@ -322,9 +334,13 @@ public class AuthorizationService(
             return null;
         }
 
-        // Mark code as used
+        var markedUsed = await TryMarkAuthorizationCodeUsedAsync(code);
+        if (!markedUsed)
+        {
+            logger.LogWarning("Authorization code was already used during redemption race: {Code}", code);
+            return null;
+        }
         entity.IsUsed = true;
-        await dbContext.SaveChangesAsync();
 
         return new AuthorizationCode
         {
@@ -341,12 +357,51 @@ public class AuthorizationService(
         };
     }
 
-    private static List<string> ParseScopes(string? scope)
+    private async Task<bool> TryMarkAuthorizationCodeUsedAsync(string code)
+    {
+        if (dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            var entity = await dbContext.AuthorizationCodes
+                .FirstOrDefaultAsync(c => c.Code == code && !c.IsUsed && c.ExpiresAt > DateTime.UtcNow);
+
+            if (entity == null)
+                return false;
+
+            entity.IsUsed = true;
+            await dbContext.SaveChangesAsync();
+            return true;
+        }
+
+        var affected = await dbContext.AuthorizationCodes
+            .Where(c => c.Code == code && !c.IsUsed && c.ExpiresAt > DateTime.UtcNow)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.IsUsed, true));
+
+        return affected == 1;
+    }
+
+    private static ScopeParseResult ParseAndValidateScopes(string? scope, IReadOnlyCollection<string>? allowedScopes)
     {
         if (string.IsNullOrWhiteSpace(scope))
-            return new List<string>();
+            return ScopeParseResult.Valid([]);
 
-        return scope.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var allowed = (allowedScopes is { Count: > 0 } ? allowedScopes : ["profile", "email", "create", "update", "delete", "media"])
+            .ToHashSet(StringComparer.Ordinal);
+
+        var scopes = scope.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var unknown = scopes.FirstOrDefault(s => !allowed.Contains(s));
+        if (unknown != null)
+            return ScopeParseResult.Invalid($"Unsupported scope: {unknown}");
+
+        if (scopes.Contains("email", StringComparer.Ordinal) &&
+            !scopes.Contains("profile", StringComparer.Ordinal))
+        {
+            return ScopeParseResult.Invalid("The email scope requires the profile scope");
+        }
+
+        return ScopeParseResult.Valid(scopes);
     }
 
     private static string GenerateSessionId()
@@ -374,6 +429,12 @@ public class AuthorizationService(
             ErrorDescription = description,
             RedirectUriUntrusted = redirectUriUntrusted
         };
+    }
+
+    private sealed record ScopeParseResult(bool Success, List<string> Scopes, string? ErrorDescription)
+    {
+        public static ScopeParseResult Valid(List<string> scopes) => new(true, scopes, null);
+        public static ScopeParseResult Invalid(string errorDescription) => new(false, [], errorDescription);
     }
 
     /// <summary>
@@ -426,4 +487,3 @@ public class AuthorizationService(
         return $"/enter-profile?{queryString}";
     }
 }
-

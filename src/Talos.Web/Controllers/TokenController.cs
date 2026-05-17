@@ -120,11 +120,12 @@ public class TokenController(
             authCode.Scopes);
 
         var refreshToken = tokenService.GenerateRefreshToken();
+        var refreshTokenHash = HashRefreshToken(refreshToken);
 
         // Store refresh token
         dbContext.RefreshTokens.Add(new RefreshTokenEntity
         {
-            Token = refreshToken,
+            Token = refreshTokenHash,
             ProfileUrl = authCode.ProfileUrl,
             ClientId = authCode.ClientId,
             Scopes = string.Join(" ", authCode.Scopes),
@@ -167,8 +168,10 @@ public class TokenController(
             });
         }
 
+        var refreshTokenHash = HashRefreshToken(request.RefreshToken);
+
         var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && 
+            .FirstOrDefaultAsync(t => t.Token == refreshTokenHash && 
                                       !t.IsRevoked && 
                                       t.ExpiresAt > DateTime.UtcNow);
 
@@ -195,11 +198,12 @@ public class TokenController(
         storedToken.IsRevoked = true;
         
         var newRefreshToken = tokenService.GenerateRefreshToken();
+        var newRefreshTokenHash = HashRefreshToken(newRefreshToken);
         var scopes = storedToken.Scopes?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
         
         dbContext.RefreshTokens.Add(new RefreshTokenEntity
         {
-            Token = newRefreshToken,
+            Token = newRefreshTokenHash,
             ProfileUrl = storedToken.ProfileUrl,
             ClientId = storedToken.ClientId,
             Scopes = storedToken.Scopes,
@@ -310,8 +314,9 @@ public class TokenController(
         }
 
         // Try to find and revoke a refresh token
+        var tokenHash = HashRefreshToken(token);
         var refreshToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == token);
+            .FirstOrDefaultAsync(t => t.Token == tokenHash);
 
         if (refreshToken != null)
         {
@@ -325,6 +330,24 @@ public class TokenController(
         // They will simply expire. For stricter revocation, use token introspection
         
         return Ok();
+    }
+
+    private string HashRefreshToken(string token)
+    {
+        var secret = settings.Value.RefreshTokenHashSecret;
+        var tokenBytes = Encoding.UTF8.GetBytes(token);
+        byte[] hashBytes;
+
+        if (!string.IsNullOrEmpty(secret))
+        {
+            hashBytes = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), tokenBytes);
+        }
+        else
+        {
+            hashBytes = SHA256.HashData(tokenBytes);
+        }
+
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 }
 
@@ -395,5 +418,4 @@ public class IntrospectionResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long Exp { get; set; }
 }
-
 
