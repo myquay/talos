@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Talos.Web.Configuration;
 using Talos.Web.Models;
@@ -52,7 +53,12 @@ public class AuthController(
             // If redirect_uri is untrusted (invalid/malicious), never redirect to it — show error page directly
             if (!result.RedirectUriUntrusted && !string.IsNullOrEmpty(redirectUri) && Uri.TryCreate(redirectUri, UriKind.Absolute, out _))
             {
-                var errorRedirect = $"{redirectUri}?error={result.Error}&error_description={Uri.EscapeDataString(result.ErrorDescription ?? "")}&state={Uri.EscapeDataString(state ?? "")}";
+                var errorRedirect = QueryHelpers.AddQueryString(redirectUri, new Dictionary<string, string?>
+                {
+                    ["error"] = result.Error,
+                    ["error_description"] = result.ErrorDescription ?? "",
+                    ["state"] = state ?? ""
+                });
                 return Redirect(errorRedirect);
             }
             
@@ -229,7 +235,12 @@ public class AuthController(
         if (!request.Approved)
         {
             // User denied - redirect with error
-            var denyRedirect = $"{pending.RedirectUri}?error=access_denied&error_description=User%20denied%20the%20request&state={Uri.EscapeDataString(pending.State)}";
+            var denyRedirect = QueryHelpers.AddQueryString(pending.RedirectUri, new Dictionary<string, string?>
+            {
+                ["error"] = "access_denied",
+                ["error_description"] = "User denied the request",
+                ["state"] = pending.State
+            });
             return Ok(new { redirectUrl = denyRedirect });
         }
 
@@ -264,5 +275,4 @@ public class ConsentRequest
     public string SessionId { get; set; } = "";
     public bool Approved { get; set; }
 }
-
 

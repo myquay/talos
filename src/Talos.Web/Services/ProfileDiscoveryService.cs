@@ -91,7 +91,8 @@ public class ProfileDiscoveryService(
     private static string NormalizeProfileUrl(string url)
     {
         // Ensure URL has scheme
-        if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             url = "https://" + url;
         }
@@ -103,6 +104,10 @@ public class ProfileDiscoveryService(
             url = uri.GetLeftPart(UriPartial.Authority) + "/";
         }
 
-        return url.ToLowerInvariant();
+        var scheme = uri.Scheme.ToLowerInvariant();
+        var host = uri.Host.ToLowerInvariant();
+        var path = string.IsNullOrEmpty(uri.AbsolutePath) ? "/" : uri.AbsolutePath;
+
+        return $"{scheme}://{host}{path}{uri.Query}";
     }
 }

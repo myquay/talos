@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Talos.Web.Telemetry;
 
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -74,7 +76,7 @@ public class TokenControllerRefreshTokenTests : IDisposable
     {
         _dbContext.RefreshTokens.Add(new RefreshTokenEntity
         {
-            Token = ValidRefreshToken,
+            Token = HashRefreshToken(ValidRefreshToken),
             ProfileUrl = "https://user.example.com/",
             ClientId = clientId,
             Scopes = "profile email",
@@ -82,6 +84,12 @@ public class TokenControllerRefreshTokenTests : IDisposable
             ExpiresAt = DateTime.UtcNow.AddDays(30)
         });
         _dbContext.SaveChanges();
+    }
+
+    private static string HashRefreshToken(string token)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
     // ===== client_id required =====
@@ -181,8 +189,38 @@ public class TokenControllerRefreshTokenTests : IDisposable
             ClientId = ValidClientId
         });
 
-        var old = await _dbContext.RefreshTokens.FirstAsync(t => t.Token == ValidRefreshToken);
+        var old = await _dbContext.RefreshTokens.FirstAsync(t => t.Token == HashRefreshToken(ValidRefreshToken));
         old.IsRevoked.Should().BeTrue("the old refresh token should be revoked after rotation");
+    }
+
+    [Fact]
+    public async Task RefreshTokenGrant_Success_StoresNewRefreshTokenHashOnly()
+    {
+        SeedValidRefreshToken();
+        var controller = CreateController();
+
+        await controller.Exchange(new TokenRequest
+        {
+            GrantType = "refresh_token",
+            RefreshToken = ValidRefreshToken,
+            ClientId = ValidClientId
+        });
+
+        var newToken = await _dbContext.RefreshTokens.FirstAsync(t => t.Token == HashRefreshToken("new-refresh-token"));
+        newToken.Token.Should().NotBe("new-refresh-token",
+            "refresh tokens should not be stored in plaintext");
+    }
+
+    [Fact]
+    public async Task Revoke_HashesSubmittedRefreshTokenBeforeLookup()
+    {
+        SeedValidRefreshToken();
+        var controller = CreateController();
+
+        await controller.Revoke(ValidRefreshToken);
+
+        var stored = await _dbContext.RefreshTokens.FirstAsync(t => t.Token == HashRefreshToken(ValidRefreshToken));
+        stored.IsRevoked.Should().BeTrue();
     }
 
     // ===== invalid/expired refresh token =====

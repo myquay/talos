@@ -213,4 +213,46 @@ public class AuthorizationServiceScopeTests : IDisposable
         var scopes = await GetStoredScopesAsync(sut, result.SessionId!);
         scopes.Should().BeEquivalentTo(new[] { "profile", "email" });
     }
+
+    [Fact]
+    public async Task CreateAuthorizationAsync_UnknownScope_ReturnsInvalidScope()
+    {
+        SetupSuccessfulProfileDiscovery();
+        var sut = CreateService();
+        var request = CreateValidRequest(scope: "create admin");
+
+        var result = await sut.CreateAuthorizationAsync(request);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("invalid_scope");
+        result.ErrorDescription.Should().Contain("admin");
+    }
+
+    [Fact]
+    public async Task CreateAuthorizationAsync_EmailWithoutProfile_ReturnsInvalidScope()
+    {
+        SetupSuccessfulProfileDiscovery();
+        var sut = CreateService();
+        var request = CreateValidRequest(scope: "email");
+
+        var result = await sut.CreateAuthorizationAsync(request);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("invalid_scope");
+        result.ErrorDescription.Should().Contain("profile");
+    }
+
+    [Fact]
+    public async Task CreateAuthorizationAsync_DuplicateScopes_StoresDistinctScopes()
+    {
+        SetupSuccessfulProfileDiscovery();
+        var sut = CreateService();
+        var request = CreateValidRequest(scope: "profile create profile");
+
+        var result = await sut.CreateAuthorizationAsync(request);
+
+        result.Success.Should().BeTrue();
+        var scopes = await GetStoredScopesAsync(sut, result.SessionId!);
+        scopes.Should().Equal("profile", "create");
+    }
 }
