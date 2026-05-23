@@ -24,13 +24,13 @@
         <div class="mt-6 space-y-3">
           <button
             @click="approve"
-            class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+            class="w-full cursor-pointer bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
           >
             Authorize
           </button>
           <button
             @click="deny"
-            class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
+            class="w-full cursor-pointer bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
           >
             Deny
           </button>
@@ -109,4 +109,3 @@ onMounted(async () => {
   }
 })
 </script>
-
