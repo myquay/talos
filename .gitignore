@@ -17,6 +17,9 @@
 # JetBrains IDE
 .idea/
 
+# Local planning notes
+.plans/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
