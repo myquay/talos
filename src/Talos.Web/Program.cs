@@ -13,10 +13,24 @@ builder.Services.Configure<GitHubSettings>(builder.Configuration.GetSection("Git
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<IndieAuthSettings>(builder.Configuration.GetSection("IndieAuth"));
 builder.Services.Configure<TalosSettings>(builder.Configuration.GetSection("Talos"));
+var talosSettings = builder.Configuration.GetSection("Talos").Get<TalosSettings>() ?? new TalosSettings();
 
 // Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("IndieAuthClients", policy =>
+    {
+        if (talosSettings.AllowedClientOrigins.Length > 0)
+        {
+            policy.WithOrigins(talosSettings.AllowedClientOrigins)
+                .WithMethods("GET", "POST", "OPTIONS")
+                .WithHeaders("Accept", "Content-Type")
+                .WithExposedHeaders("WWW-Authenticate");
+        }
+    });
+});
 
 // Add rate limiting
 builder.Services.AddRateLimiter(options =>
@@ -170,6 +184,7 @@ app.UseRateLimiter();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseCors("IndieAuthClients");
 
 app.MapControllers();
 

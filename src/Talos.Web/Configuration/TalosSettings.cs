@@ -10,5 +10,9 @@ public class TalosSettings
     /// Matching is case-insensitive and exact (no wildcard/subdomain support).
     /// </summary>
     public string[]? AllowedProfileHosts { get; set; }
-}
 
+    /// <summary>
+    /// Exact browser origins allowed to use the public-client token endpoints.
+    /// </summary>
+    public string[] AllowedClientOrigins { get; set; } = [];
+}
