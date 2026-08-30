@@ -30,7 +30,7 @@ jobs:
           cache-dependency-path: src/Talos.Web/ClientApp/package-lock.json
 
       - name: Test backend
-        run: dotnet test Talos.slnx --configuration Release
+        run: dotnet test talos.slnx --configuration Release
 
       - name: Build frontend
         working-directory: src/Talos.Web/ClientApp
