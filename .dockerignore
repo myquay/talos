@@ -1,0 +1,31 @@
+.git
+.github
+.idea
+.vscode
+.agents
+.codex
+
+# Runtime configuration and credentials must never enter the build context.
+.env
+.env.*
+**/.env
+**/.env.*
+**/appsettings*.json
+**/*credentials*.json
+**/*secret*.json
+**/*.key
+**/*.pem
+**/*.pfx
+
+# Runtime data and generated output.
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/bin
+**/obj
+**/node_modules
+**/TestResults
+**/coverage
+tests
+plans

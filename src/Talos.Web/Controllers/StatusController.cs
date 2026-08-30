@@ -70,6 +70,18 @@ public class StatusController : ControllerBase
         if (string.IsNullOrEmpty(talos["BaseUrl"]))
             issues.Add(new ConfigurationIssue("baseurl_missing", "Talos", "Base URL is not configured", "error"));
 
+        var migrationTimeout = talos["MigrationTimeoutSeconds"];
+        if (!string.IsNullOrEmpty(migrationTimeout)
+            && (!int.TryParse(migrationTimeout, out var migrationTimeoutSeconds)
+                || migrationTimeoutSeconds is < 10 or > 300))
+        {
+            issues.Add(new ConfigurationIssue(
+                "migration_timeout_invalid",
+                "Talos",
+                "Migration timeout must be between 10 and 300 seconds",
+                "error"));
+        }
+
         // Database checks
         var connectionString = _configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrEmpty(connectionString))
@@ -121,4 +133,3 @@ public class ConfigurationIssue
         Severity = severity;
     }
 }
-

@@ -137,7 +137,20 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TalosDbContext>();
-    await DatabaseMigrationHelper.MigrateAsync(db);
+    var migrationTimeoutSeconds = Math.Clamp(talosSettings.MigrationTimeoutSeconds, 10, 300);
+    using var migrationTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(migrationTimeoutSeconds));
+
+    try
+    {
+        await DatabaseMigrationHelper.MigrateAsync(db, migrationTimeout.Token);
+    }
+    catch (OperationCanceledException) when (migrationTimeout.IsCancellationRequested)
+    {
+        app.Logger.LogCritical(
+            "Database migration did not complete within {MigrationTimeoutSeconds} seconds. Startup is being aborted.",
+            migrationTimeoutSeconds);
+        throw;
+    }
 }
 
 // Security headers middleware

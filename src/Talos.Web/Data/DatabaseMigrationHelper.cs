@@ -10,8 +10,8 @@ public static class DatabaseMigrationHelper
     /// <summary>
     /// Applies any pending EF Core migrations.
     /// </summary>
-    public static async Task MigrateAsync(TalosDbContext db)
+    public static async Task MigrateAsync(TalosDbContext db, CancellationToken cancellationToken = default)
     {
-        await db.Database.MigrateAsync();
+        await db.Database.MigrateAsync(cancellationToken);
     }
 }
